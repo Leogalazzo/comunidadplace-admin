@@ -355,20 +355,17 @@ function escapeHtml(str) {
 
 // Arma el link público del producto (perfil del emprendedor con el modal
 // del producto abierto automáticamente) y lo copia al portapapeles.
-// OJO: no asumimos que el sitio vive en la raíz del dominio (window.location.origin
-// solo) porque en hosteos como GitHub Pages de un repo de proyecto, el sitio
-// vive bajo una subcarpeta (https://usuario.github.io/repo/...). Por eso
-// derivamos el directorio actual de window.location.pathname y ahí al lado
-// buscamos emprendedor.html, en vez de pegarlo a la fuerza contra la raíz.
 function copiarLinkProducto(id) {
     copiarAlPortapapeles(`${urlPerfilPublico()}&producto=${id}`, 'Link del producto copiado. ¡Ya lo podés compartir!');
 }
 
 // Arma el link público del perfil del emprendedor (emprendedor.html?t=usuario).
 // Se usa tanto para "Ir a mi perfil" como para compartir el link de un producto.
+// Usa SITIO_PUBLICO (definido en supabase-client.js) en vez de window.location.origin,
+// porque el dashboard vive en un dominio distinto (Vercel) al del sitio público
+// (Cloudflare), donde realmente está emprendedor.html.
 function urlPerfilPublico() {
-    const directorioActual = window.location.pathname.replace(/[^/]*$/, ''); // pathname sin "dashboard.html"
-    return `${window.location.origin}${directorioActual}emprendedor.html?t=${encodeURIComponent(perfilActual.usuario)}`;
+    return `${SITIO_PUBLICO}/emprendedor.html?t=${encodeURIComponent(perfilActual.usuario)}`;
 }
 
 // ============================================================
@@ -935,11 +932,12 @@ async function cargarPerfilEmprendedor() {
 // ============================================================
 
 // Arma el link único que apunta a la pantalla pública de verificación.
-// Usa el mismo origen donde está alojado el sitio, así funciona igual
-// en local, en el dominio de prueba o en el dominio final.
+// Usa SITIO_PUBLICO (definido en supabase-client.js) en vez de window.location.origin,
+// porque el dashboard vive en un dominio distinto (Vercel) al del sitio público
+// (Cloudflare), donde realmente está verificar.html.
 function obtenerLinkCredencial() {
     if (!emprendedorActual || !emprendedorActual.id) return '';
-    return `${window.location.origin}/verificar.html?id=${emprendedorActual.id}`;
+    return `${SITIO_PUBLICO}/verificar.html?id=${emprendedorActual.id}`;
 }
 
 let qrCredencialInstancia = null;
