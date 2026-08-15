@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingresar | Comunidad Place</title>
+    <link rel="shortcut icon" href="https://res.cloudinary.com/dloroyhev/image/upload/v1786766537/jbsomfdmmovs2soin72l.webp">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-900 h-[100dvh] flex items-center justify-center p-3 sm:p-6 relative overflow-hidden">
+
+    <!-- Fondo decorativo moderno (Ambient Glow) -->
+    <div class="absolute -top-32 -left-32 w-96 h-96 bg-yellow-400/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-yellow-400/5 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="w-full max-w-md relative z-10 my-auto">
+        <!-- Logo / Identidad (mismo diseño que el header del index) -->
+        <div class="text-center mb-3 sm:mb-8">
+            <div class="inline-flex items-center gap-2 select-none">
+                <div class="w-8 h-8 sm:w-11 sm:h-11 bg-yellow-400 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 shadow-[0_2px_14px_rgba(250,204,21,0.35)]">
+                    <svg class="w-4 h-4 sm:w-[22px] sm:h-[22px] text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z" />
+                    </svg>
+                </div>
+                <div class="leading-none text-left">
+                    <span class="block text-[8px] sm:text-[10px] font-black tracking-[0.25em] text-yellow-400 uppercase">Comunidad</span>
+                    <span class="block text-base sm:text-2xl font-900 tracking-wide uppercase -mt-0.5 text-white">Place</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tarjeta del Formulario -->
+        <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-10 border border-gray-100 shadow-2xl shadow-black/20">
+            <div class="mb-3.5 sm:mb-6">
+                <h1 class="text-lg sm:text-3xl font-black uppercase italic tracking-tight text-gray-900 mb-0.5 sm:mb-1">
+                    Ingresar
+                </h1>
+                <p class="text-gray-500 text-xs sm:text-sm font-medium">
+                    Accedé a tu panel de gestión.
+                </p>
+            </div>
+
+            <form id="form-login" class="space-y-3 sm:space-y-5" novalidate>
+                <!-- Input Usuario -->
+                <div>
+                    <label for="usuario" class="block text-[10px] sm:text-[11px] font-bold uppercase mb-1 sm:mb-1.5 tracking-wider text-gray-500">
+                        Usuario
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 sm:pl-3.5 flex items-center pointer-events-none text-gray-400">
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                        </div>
+                        <input type="text" id="usuario" required autocomplete="username" placeholder="Tu nombre de usuario"
+                            class="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3.5 bg-gray-50/50 border-2 border-gray-200/80 rounded-lg sm:rounded-xl text-sm font-semibold text-gray-900 placeholder-gray-400 focus:bg-white focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/15 outline-none transition-all duration-200">
+                    </div>
+                </div>
+
+                <!-- Input Contraseña -->
+                <div>
+                    <label for="password" class="block text-[10px] sm:text-[11px] font-bold uppercase mb-1 sm:mb-1.5 tracking-wider text-gray-500">
+                        Contraseña
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 sm:pl-3.5 flex items-center pointer-events-none text-gray-400">
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                            </svg>
+                        </div>
+                        <input type="password" id="password" required autocomplete="current-password" placeholder="••••••••"
+                            class="w-full pl-10 sm:pl-11 pr-11 sm:pr-12 py-2.5 sm:py-3.5 bg-gray-50/50 border-2 border-gray-200/80 rounded-lg sm:rounded-xl text-sm font-semibold text-gray-900 placeholder-gray-400 focus:bg-white focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/15 outline-none transition-all duration-200">
+                        <!-- Botón ver/ocultar contraseña -->
+                        <button type="button" id="btn-toggle-password" 
+                            class="absolute inset-y-0 right-0 pr-3 sm:pr-3.5 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none transition">
+                            <!-- Ojo (Mostrar) -->
+                            <svg id="icon-eye" class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <!-- Ojo tachado (Ocultar) -->
+                            <svg id="icon-eye-off" class="w-4 h-4 sm:w-5 sm:h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Alerta de Error -->
+                <div id="msg-error" class="hidden flex items-start gap-2 sm:gap-2.5 bg-red-50 border border-red-200 text-red-600 text-[11px] sm:text-xs font-bold p-2.5 sm:p-3 rounded-lg sm:rounded-xl transition-all">
+                    <svg class="w-4 h-4 shrink-0 mt-0.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span id="msg-error-text"></span>
+                </div>
+
+                <!-- Botón Submit -->
+                <button type="submit" id="btn-login"
+                    class="w-full bg-black text-white py-3 sm:py-4 rounded-lg sm:rounded-xl font-black uppercase text-xs tracking-widest hover:bg-yellow-400 hover:text-black focus:ring-4 focus:ring-yellow-400/30 transition-all duration-200 shadow-lg shadow-black/10 active:scale-[0.98] flex items-center justify-center gap-2">
+                    <span>Ingresar</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Ayuda + Enlace volver -->
+        <div class="text-center mt-3 sm:mt-6 space-y-1.5 sm:space-y-3">
+            <p class="text-gray-400 text-[10px] sm:text-[11px] font-bold uppercase tracking-widest">¿Necesitás ayuda?</p>
+            <a href="https://wa.me/5493644539325?text=Hola%2C%20necesito%20ayuda%20para%20ingresar%20a%20mi%20cuenta%20de%20ComunidadPlace"
+                target="_blank" rel="noopener"
+                class="inline-flex items-center gap-1.5 sm:gap-2 bg-white/5 border border-white/10 text-white text-[10px] sm:text-xs font-bold uppercase tracking-widest px-4 sm:px-5 py-2 sm:py-3 rounded-full hover:bg-green-500/10 hover:border-green-500/40 hover:text-green-400 transition-all active:scale-95">
+                <svg viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.48 1.32 4.99L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.005c5.46 0 9.9-4.45 9.9-9.91 0-2.65-1.03-5.13-2.9-7C17.17 3.03 14.69 2 12.04 2zm5.8 14.13c-.24.68-1.4 1.32-1.93 1.4-.5.08-1.11.11-1.79-.11-.41-.13-.94-.31-1.61-.6-2.83-1.22-4.67-4.06-4.81-4.25-.14-.19-1.15-1.53-1.15-2.92s.72-2.07.98-2.35c.26-.28.56-.35.75-.35h.53c.17 0 .4-.02.62.48.24.55.81 1.9.88 2.04.07.14.11.3.02.49-.09.19-.14.31-.28.48-.14.16-.29.36-.42.48-.14.14-.28.29-.13.57.16.28.7 1.16 1.51 1.88 1.04.93 1.92 1.22 2.2 1.36.28.14.44.12.6-.07.16-.19.68-.79.87-1.06.19-.28.37-.23.62-.14.26.1 1.63.77 1.91.91.28.14.47.21.53.33.07.12.07.68-.17 1.36z"/></svg>
+                Escribinos por WhatsApp
+            </a>
+            <p>
+                <a href="index.html" class="inline-flex items-center gap-1.5 text-gray-400 text-[10px] sm:text-xs uppercase tracking-widest font-bold hover:text-white transition-colors py-1 px-3">
+                    <span>← Volver a la tienda</span>
+                </a>
+            </p>
+        </div>
+    </div>
+
+    <script src="supabase-client.js"></script>
+    <script src="login.js"></script>
+</body>
+</html>

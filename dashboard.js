@@ -1,0 +1,1273 @@
+let perfilActual = null;      // fila de usuarios (id, usuario, rol)
+let emprendedorActual = null; // fila de emprendedores
+let categorias = [];
+let productoEditandoId = null; // null = creando, uuid = editando
+let variantesEnEdicion = [];   // [{id?, nombre, valor, precio_adicional, _borrar?}]
+let variantesEliminadas = [];  // ids de variantes existentes que se quitaron y hay que borrar en Supabase al guardar
+let mediosPagoPerfilSeleccion = [];   // ids seleccionados en "Mi Perfil"
+let mediosPagoProductoSeleccion = []; // ids seleccionados en el modal de producto
+let productosCache = [];      // último listado de productos traído de Supabase
+
+// Filtros activos del buscador de "Mis productos"
+let filtroBusquedaProductos = '';
+let filtroEstadoProductos = 'todos';     // 'todos' | 'visibles' | 'ocultos'
+let filtroCategoriaProductos = '';       // '' = todas
+
+const grid = document.getElementById('grid-productos');
+const contadorProductos = document.getElementById('contador-productos');
+const modal = document.getElementById('modal-form');
+const form = document.getElementById('form-producto');
+const selectCategoria = document.getElementById('categoria');
+const listaVariantes = document.getElementById('lista-variantes');
+
+document.addEventListener('DOMContentLoaded', async () => {
+    perfilActual = await requerirSesion('emprendedor');
+    if (!perfilActual) return; // requerirSesion ya redirige si no corresponde
+
+    document.getElementById('usuario-sidebar').textContent = '@' + perfilActual.usuario;
+    document.getElementById('nombre-tienda-sidebar').textContent = perfilActual.usuario;
+    document.getElementById('avatar-sidebar-letra').textContent = perfilActual.usuario.charAt(0).toUpperCase();
+    document.getElementById('link-ir-a-mi-perfil').href = urlPerfilPublico();
+    await cargarPerfilEmprendedor();
+    verificarTerminos();
+    await cargarCategorias();
+    await renderProductos(true);
+
+    iniciarRealtimeDashboard();
+});
+
+
+function iniciarRealtimeDashboard() {
+
+    const refrescarProductos = debounce(() => renderProductos(), 350);
+
+    const refrescarCategorias = debounce(async () => {
+        const seleccionActual = selectCategoria.value;
+        await cargarCategorias();
+        if (seleccionActual) selectCategoria.value = seleccionActual;
+    }, 350);
+
+    suscribirTabla('productos', refrescarProductos, `emprendedor_id=eq.${perfilActual.id}`);
+    suscribirTabla('categorias', refrescarCategorias);
+
+    // Si el admin bloquea/activa la tienda mientras el emprendedor está en el
+    // panel, el banner se actualiza al toque, sin necesidad de recargar.
+    suscribirTabla('emprendedores', (payload) => {
+        emprendedorActual = payload.new;
+        actualizarBannerBloqueo(emprendedorActual);
+    }, `id=eq.${perfilActual.id}`);
+}
+
+// ============================================================
+// TÉRMINOS Y CONDICIONES
+// ============================================================
+// La fuente de verdad es la columna "terminos_aceptados" en Supabase (así el
+// admin puede ver en admin.html quién aceptó y quién rechazó). El localStorage
+// es sólo una caché para no mostrar el modal de nuevo en este mismo navegador
+// mientras se termina de confirmar el guardado.
+function claveTerminosLocalStorage() {
+    return `cp_terminos_${perfilActual.id}`;
+}
+
+function verificarTerminos() {
+    // Ya aceptó según la base de datos -> no mostramos nada.
+    if (emprendedorActual && emprendedorActual.terminos_aceptados === true) {
+        localStorage.setItem(claveTerminosLocalStorage(), '1');
+        return;
+    }
+
+    // Todavía no respondió, o rechazó anteriormente -> mostramos el modal para
+    // que vuelva a decidir (si rechaza, se le cierra la sesión; sin importar el
+    // localStorage: la base manda, por si entra desde otro dispositivo/navegador).
+    document.getElementById('modal-terminos').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+}
+
+async function responderTerminos(acepto) {
+    const btnAceptar = document.getElementById('btn-aceptar-terminos');
+    const btnRechazar = document.getElementById('btn-rechazar-terminos');
+    btnAceptar.disabled = true;
+    btnRechazar.disabled = true;
+
+    const { error } = await supabase.from('emprendedores')
+        .update({ terminos_aceptados: acepto, terminos_respondido_en: new Date().toISOString() })
+        .eq('id', perfilActual.id);
+
+    if (error) {
+        btnAceptar.disabled = false;
+        btnRechazar.disabled = false;
+        mostrarToast('No se pudo guardar tu respuesta. Probá de nuevo.', 'error');
+        console.error(error);
+        return;
+    }
+
+    emprendedorActual.terminos_aceptados = acepto;
+    localStorage.setItem(claveTerminosLocalStorage(), '1');
+
+    if (!acepto) {
+        // Si rechaza los términos, no puede seguir usando el panel: le avisamos
+        // y le cerramos la sesión. La próxima vez que inicie sesión, verificarTerminos()
+        // va a volver a mostrarle el modal para que decida.
+        mostrarToast('Registramos tu rechazo de los términos. Cerrando sesión...', 'info');
+        setTimeout(() => { cerrarSesion(); }, 1800);
+        return;
+    }
+
+    document.getElementById('modal-terminos').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+
+    mostrarToast('Gracias por aceptar los términos.', 'success');
+}
+
+// Muestra/oculta el aviso de "tienda bloqueada" según el estado del emprendedor.
+function actualizarBannerBloqueo(emprendedor) {
+    const banner = document.getElementById('banner-tienda-bloqueada');
+    if (!banner) return;
+
+    const bloqueada = emprendedor && emprendedor.activo === false;
+    banner.classList.toggle('hidden', !bloqueada);
+
+    if (bloqueada) {
+        document.getElementById('banner-tienda-bloqueada-motivo').textContent =
+            emprendedor.motivo_bloqueo || 'Contactate con el equipo de la comunidad para más información.';
+    }
+}
+
+async function cargarCategorias() {
+    const { data, error } = await supabase.from('categorias').select('*').order('nombre');
+    if (error) { console.error(error); return; }
+    categorias = data;
+    selectCategoria.innerHTML = '<option value="" disabled selected>Elegí categoría</option>'
+        + categorias.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+
+    // Select del filtro de "Mis productos" (conserva la selección si ya había una)
+    const selectFiltroCategoria = document.getElementById('filtro-categoria-productos');
+    if (selectFiltroCategoria) {
+        const seleccionActual = selectFiltroCategoria.value;
+        selectFiltroCategoria.innerHTML = '<option value="">Todas las categorías</option>'
+            + categorias.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+        selectFiltroCategoria.value = seleccionActual;
+    }
+}
+
+// Buscador con debounce: no filtra en cada tecla, espera a que la persona pare de escribir.
+const onFiltroBusquedaProductos = debounce(() => {
+    filtroBusquedaProductos = document.getElementById('filtro-busqueda-productos').value;
+    pintarGridProductos();
+}, 250);
+
+function onFiltroCambiado() {
+    filtroEstadoProductos = document.getElementById('filtro-estado-productos').value;
+    filtroCategoriaProductos = document.getElementById('filtro-categoria-productos').value;
+    pintarGridProductos();
+}
+
+function limpiarFiltrosProductos() {
+    filtroBusquedaProductos = '';
+    filtroEstadoProductos = 'todos';
+    filtroCategoriaProductos = '';
+    document.getElementById('filtro-busqueda-productos').value = '';
+    document.getElementById('filtro-estado-productos').value = 'todos';
+    document.getElementById('filtro-categoria-productos').value = '';
+    pintarGridProductos();
+}
+
+// Aplica los filtros activos (búsqueda + estado + categoría) sobre el listado completo.
+function obtenerProductosFiltrados() {
+    const termino = filtroBusquedaProductos.trim().toLowerCase();
+    return productosCache.filter(p => {
+        if (filtroEstadoProductos === 'visibles' && !p.activo) return false;
+        if (filtroEstadoProductos === 'ocultos' && p.activo) return false;
+        if (filtroCategoriaProductos && String(p.categoria_id) !== String(filtroCategoriaProductos)) return false;
+        if (termino && !(p.nombre || '').toLowerCase().includes(termino)) return false;
+        return true;
+    });
+}
+
+
+const NAV_BASE = "w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 group";
+const NAV_ACTIVO = `${NAV_BASE} bg-yellow-400 text-black font-bold shadow-md shadow-yellow-400/10`;
+const NAV_INACTIVO = `${NAV_BASE} text-slate-400 hover:text-white hover:bg-white/5`;
+
+function mostrarSeccion(seccionId) {
+    const secciones = {
+        productos: document.getElementById('section-productos'),
+        perfil: document.getElementById('section-perfil'),
+        anuncios: document.getElementById('section-anuncios'),
+        qr: document.getElementById('section-qr'),
+        credencial: document.getElementById('section-credencial'),
+    };
+    const navs = {
+        productos: document.getElementById('nav-productos'),
+        perfil: document.getElementById('nav-perfil'),
+        anuncios: document.getElementById('nav-anuncios'),
+        qr: document.getElementById('nav-qr'),
+        credencial: document.getElementById('nav-credencial'),
+    };
+
+    Object.keys(secciones).forEach((id) => {
+        const activa = id === seccionId;
+        secciones[id].classList.toggle('hidden', !activa);
+        navs[id].className = activa ? NAV_ACTIVO : NAV_INACTIVO;
+    });
+
+    if (seccionId === 'anuncios') actualizarContadorAnuncio();
+    // La vista previa del cartel QR se arma recién al entrar a la sección
+    // (evita generar el QR/objeto de vista previa si el emprendedor nunca la visita).
+    if (seccionId === 'qr') renderFormatoQR(formatoQRActivo);
+    // Igual con la credencial: se arma al entrar, con los datos ya cargados.
+    if (seccionId === 'credencial') renderCredencialQR();
+}
+
+async function renderProductos(mostrarSpinner = false) {
+    if (mostrarSpinner) {
+        grid.innerHTML = `
+            <div class="col-span-full flex flex-col items-center justify-center gap-3 py-24 text-slate-400 font-semibold">
+                <svg class="w-6 h-6 animate-spin text-slate-300" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <span>Cargando productos...</span>
+            </div>`;
+    }
+
+    const { data, error } = await supabase
+        .from('productos')
+        .select('*, categorias(nombre)')
+        .eq('emprendedor_id', perfilActual.id)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        grid.innerHTML = `
+            <div class="col-span-full flex flex-col items-center justify-center gap-2 py-24 text-red-400 font-semibold">
+                <span>Error cargando productos.</span>
+            </div>`;
+        contadorProductos.textContent = '';
+        console.error(error);
+        return;
+    }
+
+    productosCache = data;
+    pintarGridProductos();
+}
+
+function pintarGridProductos() {
+    const btnHeader = document.getElementById('btn-nuevo-producto-header');
+
+    // Sin productos cargados todavía (no es un tema de filtros)
+    if (productosCache.length === 0) {
+        if (btnHeader) btnHeader.classList.add('hidden');
+        grid.innerHTML = `
+            <div class="col-span-full flex flex-col items-center justify-center gap-3 py-24 text-center">
+                <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl">🛍️</div>
+                <p class="text-slate-500 font-bold">Todavía no subiste productos.</p>
+                <p class="text-slate-400 text-sm">Empezá creando tu primer producto para mostrarlo en Comunidad Place y en tu perfil.</p>
+                <button onclick="abrirFormulario()" class="mt-2 inline-flex items-center gap-2 bg-obsidian text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-yellow-400 hover:text-black transition-all">
+                    + Nuevo Producto
+                </button>
+            </div>`;
+        contadorProductos.textContent = '';
+        return;
+    }
+
+    if (btnHeader) btnHeader.classList.remove('hidden');
+
+    const productos = obtenerProductosFiltrados();
+    const totalVisibles = productosCache.filter(p => p.activo).length;
+    const totalDestacados = productosCache.filter(p => p.destacado).length;
+    const hayFiltrosActivos = !!(filtroBusquedaProductos.trim() || filtroEstadoProductos !== 'todos' || filtroCategoriaProductos);
+
+    contadorProductos.textContent = hayFiltrosActivos
+        ? `${productos.length} de ${productosCache.length} producto${productosCache.length === 1 ? '' : 's'} · ${totalVisibles} visible${totalVisibles === 1 ? '' : 's'} en total · ${totalDestacados}/3 destacados`
+        : `${productosCache.length} producto${productosCache.length === 1 ? '' : 's'} · ${totalVisibles} visible${totalVisibles === 1 ? '' : 's'} · ${totalDestacados}/3 destacados`;
+
+    // Hay productos en la cuenta, pero ninguno coincide con el filtro actual
+    if (productos.length === 0) {
+        grid.innerHTML = `
+            <div class="col-span-full flex flex-col items-center justify-center gap-3 py-24 text-center">
+                <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl">🔎</div>
+                <p class="text-slate-500 font-bold">No encontramos productos con esos filtros.</p>
+                <p class="text-slate-400 text-sm">Probá con otra búsqueda o cambiá los filtros.</p>
+                <button onclick="limpiarFiltrosProductos()" class="mt-2 inline-flex items-center gap-2 bg-slate-100 text-slate-700 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-slate-200 transition-all">
+                    Limpiar filtros
+                </button>
+            </div>`;
+        return;
+    }
+
+    grid.innerHTML = productos.map(p => `
+        <div class="group bg-white rounded-xl sm:rounded-2xl border ${p.destacado ? 'border-yellow-400 ring-1 ring-yellow-400/70 shadow-md shadow-yellow-400/10' : 'border-slate-200 hover:border-slate-300'} shadow-sm hover:shadow-lg hover:shadow-slate-900/5 transition-all duration-300 overflow-hidden flex flex-col">
+            <div class="relative aspect-square bg-slate-100 overflow-hidden">
+                <img src="${miniaturaCloudinary(p.imagen_url, 400)}" alt="${escapeHtml(p.nombre)}" class="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500" loading="lazy" decoding="async">
+                <span class="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 flex items-center gap-1 text-[8px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-full backdrop-blur-sm ${p.activo ? 'bg-emerald-500/90 text-white' : 'bg-slate-900/75 text-white'}">
+                    <span class="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white/90"></span>
+                    ${p.activo ? 'Visible' : 'Oculto'}
+                </span>
+                <button onclick="toggleDestacadoProducto('${p.id}', ${!!p.destacado})" title="${p.destacado ? 'Quitar de destacados' : 'Marcar como destacado'}"
+                    class="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-all backdrop-blur-sm ${p.destacado ? 'bg-yellow-400 text-black shadow-md shadow-yellow-400/50' : 'bg-black/35 text-white/85 hover:bg-black/55'}">
+                    <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="${p.destacado ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.6l2.47 5.15 5.58.8-4.03 4.03.95 5.72L12 16.5l-5 2.8.95-5.72-4.03-4.03 5.58-.8L12 3.6z"/>
+                    </svg>
+                </button>
+                ${p.destacado ? `
+                <span class="absolute bottom-1.5 left-1.5 sm:bottom-2.5 sm:left-2.5 flex items-center gap-1 text-[8px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full bg-yellow-400 text-black shadow-sm">
+                    <svg class="w-2.5 h-2.5 sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.6 5.27 5.82.85-4.21 4.1.99 5.8L12 15.8l-5.2 2.72.99-5.8-4.21-4.1 5.82-.85L12 2.5z"/></svg>
+                    Destacado
+                </span>` : ''}
+                ${esProductoNuevoVigente(p) ? `
+                <span title="Le quedan ${diasRestantesNuevo(p)} día${diasRestantesNuevo(p) === 1 ? '' : 's'} de cartel Nuevo" class="absolute bottom-1.5 right-1.5 sm:bottom-2.5 sm:right-2.5 flex items-center gap-1 text-[8px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full bg-sky-500 text-white shadow-sm">
+                    Nuevo · ${diasRestantesNuevo(p)}d
+                </span>` : ''}
+            </div>
+            <div class="p-2 sm:p-3.5 flex flex-col gap-0.5 sm:gap-1 flex-1">
+                <span class="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">${p.categorias ? escapeHtml(p.categorias.nombre) : 'Sin categoría'}</span>
+                <h3 class="font-bold sm:font-extrabold text-slate-900 text-xs sm:text-sm leading-snug line-clamp-2">${escapeHtml(p.nombre)}</h3>
+                <div class="pt-0.5 flex items-center gap-1.5 flex-wrap">
+                    <span class="font-black text-sm sm:text-base text-slate-900">${formatoPrecio(p.precio)}</span>
+                    ${calcularDescuentoPorcentaje(p.precio_anterior, p.precio) > 0 ? `
+                        <span class="text-[10px] sm:text-xs font-bold text-slate-400 line-through">${formatoPrecio(p.precio_anterior)}</span>
+                        <span class="text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-red-600 text-white">-${calcularDescuentoPorcentaje(p.precio_anterior, p.precio)}% OFF</span>
+                    ` : ''}
+                </div>
+                <div class="mt-auto pt-1.5 sm:pt-2 flex items-center gap-1 sm:gap-1.5 border-t border-slate-100 -mx-2 sm:-mx-3.5 px-2 sm:px-3.5 pt-2">
+                    <button onclick="toggleActivoProducto('${p.id}', ${p.activo})" title="${p.activo ? 'Ocultar' : 'Mostrar'}" class="flex-1 h-7 sm:h-8 rounded-lg bg-slate-50 text-slate-600 ${p.activo ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-emerald-500 hover:text-white'} flex items-center justify-center transition-colors">
+                        ${p.activo
+                            ? `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`
+                            : `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.774 3.162 10.066 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/></svg>`}
+                    </button>
+                    <button onclick="copiarLinkProducto('${p.id}')" title="Copiar link para compartir" class="flex-1 h-7 sm:h-8 rounded-lg bg-slate-50 text-slate-600 hover:bg-sky-500 hover:text-white flex items-center justify-center transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
+                    </button>
+                    <button onclick="editarProducto('${p.id}')" title="Editar" class="flex-1 h-7 sm:h-8 rounded-lg bg-slate-50 text-slate-600 hover:bg-yellow-400 hover:text-black flex items-center justify-center transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    </button>
+                    <button onclick="eliminarProducto('${p.id}')" title="Eliminar" class="flex-1 h-7 sm:h-8 rounded-lg bg-slate-50 text-slate-600 hover:bg-red-500 hover:text-white flex items-center justify-center transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+}
+
+// Arma el link público del producto (perfil del emprendedor con el modal
+// del producto abierto automáticamente) y lo copia al portapapeles.
+// OJO: no asumimos que el sitio vive en la raíz del dominio (window.location.origin
+// solo) porque en hosteos como GitHub Pages de un repo de proyecto, el sitio
+// vive bajo una subcarpeta (https://usuario.github.io/repo/...). Por eso
+// derivamos el directorio actual de window.location.pathname y ahí al lado
+// buscamos emprendedor.html, en vez de pegarlo a la fuerza contra la raíz.
+function copiarLinkProducto(id) {
+    copiarAlPortapapeles(`${urlPerfilPublico()}&producto=${id}`, 'Link del producto copiado. ¡Ya lo podés compartir!');
+}
+
+// Arma el link público del perfil del emprendedor (emprendedor.html?t=usuario).
+// Se usa tanto para "Ir a mi perfil" como para compartir el link de un producto.
+function urlPerfilPublico() {
+    const directorioActual = window.location.pathname.replace(/[^/]*$/, ''); // pathname sin "dashboard.html"
+    return `${window.location.origin}${directorioActual}emprendedor.html?t=${encodeURIComponent(perfilActual.usuario)}`;
+}
+
+// ============================================================
+// MEDIOS DE PAGO
+// ============================================================
+function renderMediosPagoPerfil() {
+    const cont = document.getElementById('medios-pago-perfil');
+    cont.innerHTML = MEDIOS_PAGO.map(m => `
+        <button type="button" onclick="toggleMedioPagoPerfil('${m.id}')"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border-2 text-xs font-bold transition-all ${mediosPagoPerfilSeleccion.includes(m.id) ? 'bg-obsidian text-white border-obsidian' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}">
+            <span>${m.icon}</span><span>${m.label}</span>
+        </button>
+    `).join('');
+}
+
+function toggleMedioPagoPerfil(id) {
+    mediosPagoPerfilSeleccion = mediosPagoPerfilSeleccion.includes(id)
+        ? mediosPagoPerfilSeleccion.filter(x => x !== id)
+        : [...mediosPagoPerfilSeleccion, id];
+    renderMediosPagoPerfil();
+}
+
+function renderMediosPagoProducto() {
+    const cont = document.getElementById('medios-pago-producto');
+    const disponibles = MEDIOS_PAGO.filter(m => (emprendedorActual?.medios_pago || []).includes(m.id));
+
+    if (disponibles.length === 0) {
+        cont.innerHTML = `<p class="field-hint" style="margin:0;">Todavía no configuraste medios de pago en <button type="button" onclick="mostrarSeccion('perfil'); cerrarFormulario();" style="text-decoration:underline; font-weight:700; color:inherit; background:none; border:none; cursor:pointer; padding:0;">Mi Perfil</button>.</p>`;
+        return;
+    }
+
+    cont.innerHTML = disponibles.map(m => `
+        <button type="button" onclick="toggleMedioPagoProducto('${m.id}')"
+            class="tag-chip ${mediosPagoProductoSeleccion.includes(m.id) ? 'selected' : ''}">
+            <span>${m.icon}</span><span>${m.label}</span>
+        </button>
+    `).join('');
+}
+
+function toggleMedioPagoProducto(id) {
+    mediosPagoProductoSeleccion = mediosPagoProductoSeleccion.includes(id)
+        ? mediosPagoProductoSeleccion.filter(x => x !== id)
+        : [...mediosPagoProductoSeleccion, id];
+    renderMediosPagoProducto();
+}
+
+// ============================================================
+// MODAL: ABRIR / CERRAR
+// ============================================================
+function abrirFormulario() {
+    productoEditandoId = null;
+    variantesEnEdicion = [];
+    variantesEliminadas = [];
+    mediosPagoProductoSeleccion = [];
+    document.getElementById('titulo-modal').textContent = 'Subir Producto';
+    form.reset();
+    document.getElementById('imagen').value = '';
+    document.getElementById('categoria').value = '';
+    document.getElementById('activo').checked = true;
+    document.getElementById('nuevo').checked = false;
+    actualizarPreviewImagenProducto('');
+    renderVariantes();
+    renderMediosPagoProducto();
+    modal.classList.add('open');
+    document.body.classList.add('overflow-hidden');
+    document.getElementById('cuerpo-modal-producto').scrollTop = 0;
+}
+
+// En mobile, cuando aparece el teclado, algunos navegadores dejan el input activo
+// tapado detrás del teclado. Al enfocar un campo dentro del modal, lo centramos
+// en la zona visible con un pequeño delay (esperando a que el teclado termine de abrir).
+document.getElementById('cuerpo-modal-producto').addEventListener('focusin', (e) => {
+    const el = e.target;
+    if (el.matches('input, textarea, select')) {
+        setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
+    }
+});
+
+function cerrarFormulario() {
+    modal.classList.remove('open');
+    form.reset();
+    document.getElementById('imagen').value = '';
+    productoEditandoId = null;
+    variantesEnEdicion = [];
+    variantesEliminadas = [];
+    mediosPagoProductoSeleccion = [];
+    actualizarPreviewImagenProducto('');
+    document.body.classList.remove('overflow-hidden');
+}
+
+// ============================================================
+// SUBIDA DE IMAGEN — PRODUCTO (Supabase Storage)
+// ============================================================
+async function manejarSeleccionImagenProducto(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const errorValidacion = validarImagenSeleccionada(file);
+    if (errorValidacion) {
+        mostrarToast(errorValidacion, 'error');
+        event.target.value = '';
+        return;
+    }
+
+    const urlAnterior = document.getElementById('imagen').value;
+    mostrarSpinnerImagen('imagen-producto', true);
+    try {
+        const url = await subirImagenProductoSupabase(file, perfilActual.id);
+        document.getElementById('imagen').value = url;
+        actualizarPreviewImagenProducto(url);
+        // Si estábamos reemplazando una foto subida por este mismo sistema, borramos la
+        // vieja (nunca la default, que es compartida por todos los productos sin foto)
+        if (urlAnterior && urlAnterior !== IMAGEN_PRODUCTO_DEFAULT) borrarImagenProductoSupabase(urlAnterior);
+    } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudo subir la imagen. Probá de nuevo.', 'error');
+    } finally {
+        mostrarSpinnerImagen('imagen-producto', false);
+        event.target.value = '';
+    }
+}
+
+function mostrarSpinnerImagen(prefijo, mostrar) {
+    const spinner = document.getElementById(`${prefijo}-spinner`);
+    if (spinner) spinner.classList.toggle('hidden', !mostrar);
+}
+
+async function editarProducto(id) {
+    const { data: p, error } = await supabase.from('productos').select('*').eq('id', id).single();
+    if (error) { mostrarToast('No se pudo cargar el producto.', 'error'); return; }
+
+    const { data: vs } = await supabase.from('variantes').select('*').eq('producto_id', id);
+
+    productoEditandoId = id;
+    variantesEnEdicion = (vs || []).map(v => ({ ...v }));
+    variantesEliminadas = [];
+    mediosPagoProductoSeleccion = p.medios_pago || [];
+
+    document.getElementById('titulo-modal').textContent = 'Editar Producto';
+    document.getElementById('nombre').value = p.nombre;
+    document.getElementById('precio').value = formatoPrecioInput(p.precio);
+    document.getElementById('precio_anterior').value = p.precio_anterior ? formatoPrecioInput(p.precio_anterior) : '';
+    document.getElementById('categoria').value = p.categoria_id;
+    document.getElementById('imagen').value = p.imagen_url || '';
+    document.getElementById('descripcion').value = p.descripcion || '';
+    document.getElementById('activo').checked = p.activo;
+    document.getElementById('nuevo').checked = !!p.nuevo;
+    actualizarPreviewImagenProducto(p.imagen_url);
+
+    renderVariantes();
+    renderMediosPagoProducto();
+    modal.classList.add('open');
+    document.body.classList.add('overflow-hidden');
+    document.getElementById('cuerpo-modal-producto').scrollTop = 0;
+}
+
+// Muestra la preview de la imagen del producto (o el placeholder si está vacía/URL inválida)
+function actualizarPreviewImagenProducto(url) {
+    const area = document.getElementById('imagen-producto-area');
+    const img = document.getElementById('imagen-producto-preview');
+    const placeholder = document.getElementById('imagen-producto-preview-placeholder');
+    const acciones = document.getElementById('imagen-producto-actions');
+    const valor = (url || '').trim();
+
+    if (!valor) {
+        img.classList.add('hidden');
+        img.src = '';
+        placeholder.classList.remove('hidden');
+        area.classList.remove('has-image');
+        acciones.classList.add('hidden');
+        return;
+    }
+
+    img.onerror = () => {
+        img.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+        area.classList.remove('has-image');
+        acciones.classList.add('hidden');
+    };
+    img.onload = () => {
+        img.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+        area.classList.add('has-image');
+        acciones.classList.remove('hidden');
+    };
+    img.src = valor;
+}
+
+// Quita la imagen cargada (vuelve al placeholder). Si era una imagen propia
+// (no la default compartida), la borra también del storage.
+function quitarImagenProducto() {
+    const urlAnterior = document.getElementById('imagen').value;
+    document.getElementById('imagen').value = '';
+    actualizarPreviewImagenProducto('');
+    if (urlAnterior && urlAnterior !== IMAGEN_PRODUCTO_DEFAULT) borrarImagenProductoSupabase(urlAnterior);
+}
+
+// ============================================================
+// VARIANTES (edición en memoria, se guardan al submit)
+// ============================================================
+function agregarFilaVariante() {
+    variantesEnEdicion.push({ nombre: '', valor: '', precio_adicional: 0, disponible: true });
+    renderVariantes();
+}
+
+function quitarFilaVariante(idx) {
+    const v = variantesEnEdicion[idx];
+    // Si ya existía guardada en Supabase (tiene id), la anotamos para borrarla
+    // de la base al guardar; si es una fila nueva sin guardar, con sacarla
+    // del array en memoria alcanza.
+    if (v?.id) variantesEliminadas.push(v.id);
+    variantesEnEdicion.splice(idx, 1);
+    renderVariantes();
+}
+
+function actualizarCampoVariante(idx, campo, valor) {
+    variantesEnEdicion[idx][campo] = valor;
+}
+
+// Precio final de esa variante: si el emprendedor cargó un precio propio para
+// la combinación (ej: "Con caja" -> $60.000), se usa ese precio TAL CUAL, sin
+// sumarle nada al precio base. Si lo deja vacío/en 0, esa variante no tiene un
+// precio distinto y se cobra el precio base del producto.
+function calcularTotalVariante(idx) {
+    const base = parsearPrecio(document.getElementById('precio').value);
+    const propio = parsearPrecio(variantesEnEdicion[idx]?.precio_adicional ?? 0);
+    return propio > 0 ? propio : base;
+}
+
+function actualizarTotalVariante(idx) {
+    const el = document.getElementById(`variant-total-${idx}`);
+    if (el) el.textContent = `Precio final: ${formatoPrecio(calcularTotalVariante(idx))}`;
+}
+
+// Se llama cuando cambia el precio base: como el precio final de las variantes
+// que no tienen precio propio depende de él, hay que refrescar totales Y el
+// placeholder (que muestra el precio base como referencia de "si lo dejás
+// vacío, se cobra esto").
+function actualizarTodosLosTotalesVariantes() {
+    const base = formatoPrecioInput(parsearPrecio(document.getElementById('precio').value || 0)) || '0';
+    variantesEnEdicion.forEach((_, idx) => {
+        actualizarTotalVariante(idx);
+        const inputPrecio = document.getElementById(`variant-precio-${idx}`);
+        if (inputPrecio) inputPrecio.placeholder = base;
+    });
+}
+
+// Marca/desmarca una variante como "sin stock". Sigue existiendo y editable,
+// pero se muestra tachada y no seleccionable en la tienda pública.
+function toggleDisponibleVariante(idx) {
+    const v = variantesEnEdicion[idx];
+    v.disponible = v.disponible === false ? true : false;
+    renderVariantes();
+}
+
+function renderVariantes() {
+    if (variantesEnEdicion.length === 0) {
+        listaVariantes.innerHTML = `
+            <div class="empty-variants">
+                <p>Sin variantes cargadas.</p>
+                <button type="button" onclick="agregarFilaVariante()">+ Agregar la primera</button>
+            </div>`;
+        actualizarAvisoSinStock();
+        return;
+    }
+
+    const encabezado = `
+        <div class="variant-header">
+            <span>Nombre</span>
+            <span>Valor</span>
+            <span>Precio</span>
+            <span>Stock</span>
+            <span></span>
+        </div>`;
+
+    listaVariantes.innerHTML = encabezado + variantesEnEdicion.map((v, idx) => {
+        const sinStock = v.disponible === false;
+        return `
+        <div class="variant-row ${sinStock ? 'sin-stock' : ''}">
+            <input type="text" placeholder="Ej: Talle, Color, Sabor" value="${escapeHtml(v.nombre)}"
+                oninput="actualizarCampoVariante(${idx}, 'nombre', this.value)">
+            <input type="text" placeholder="Ej: M, Rojo, Chocolate" value="${escapeHtml(v.valor)}"
+                oninput="actualizarCampoVariante(${idx}, 'valor', this.value)">
+            <div class="variant-price-cell">
+                <input type="text" inputmode="decimal" id="variant-precio-${idx}" placeholder="${formatoPrecioInput(parsearPrecio(document.getElementById('precio')?.value || 0)) || '0'}" value="${formatoPrecioInput(parsearPrecio(v.precio_adicional ?? 0)) === '0' ? '' : formatoPrecioInput(parsearPrecio(v.precio_adicional ?? 0))}"
+                    oninput="sanitizarInputPrecio(this); actualizarCampoVariante(${idx}, 'precio_adicional', this.value); actualizarTotalVariante(${idx})"
+                    onblur="formatearInputPrecio(this)">
+                <span class="variant-total-hint" id="variant-total-${idx}">Precio final: ${formatoPrecio(calcularTotalVariante(idx))}</span>
+            </div>
+            <div class="variant-stock-toggle-wrap">
+                <label class="variant-stock-toggle" title="${sinStock ? 'Sin stock: tocá para marcar que hay stock' : 'Con stock: tocá para marcar que no hay stock'}">
+                    <input type="checkbox" ${sinStock ? '' : 'checked'} onchange="toggleDisponibleVariante(${idx})">
+                    <span class="variant-stock-toggle-slider"></span>
+                </label>
+                <span class="variant-stock-toggle-text">${sinStock ? 'Sin stock' : 'Con stock'}</span>
+            </div>
+            <div class="variant-actions">
+                <button type="button" onclick="quitarFilaVariante(${idx})" title="Quitar" class="variant-remove">✕</button>
+            </div>
+        </div>
+    `;
+    }).join('');
+
+    actualizarAvisoSinStock();
+}
+
+// Muestra/oculta el aviso de "se va a ocultar el producto" en vivo, a medida
+// que el emprendedor tilda/destilda variantes como sin stock (sin esperar a guardar).
+function actualizarAvisoSinStock() {
+    const aviso = document.getElementById('aviso-sin-stock');
+    if (!aviso) return;
+    const variantesValidas = variantesEnEdicion.filter(v => v.nombre?.trim() && v.valor?.trim());
+    const todasSinStock = variantesValidas.length > 0 && variantesValidas.every(v => v.disponible === false);
+    aviso.classList.toggle('hidden', !todasSinStock);
+}
+
+// ============================================================
+// GUARDAR PRODUCTO (crear o editar) + sus variantes
+// ============================================================
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    // La imagen es opcional: si no subieron ninguna, usamos una foto
+    // genérica para que la card del producto no quede vacía/rota.
+    const imagenUrl = document.getElementById('imagen').value.trim() || IMAGEN_PRODUCTO_DEFAULT;
+
+    const btn = document.getElementById('btn-guardar-producto');
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    // Si el producto tiene variantes cargadas y TODAS quedaron marcadas como
+    // "sin stock", no tiene sentido que siga visible en la tienda (no habría
+    // nada seleccionable para comprar): lo ocultamos automáticamente aunque
+    // el toggle "Visible en la tienda" haya quedado tildado.
+    const variantesValidas = variantesEnEdicion.filter(v => v.nombre?.trim() && v.valor?.trim());
+    const todasLasVariantesSinStock = variantesValidas.length > 0 && variantesValidas.every(v => v.disponible === false);
+    const activoElegido = document.getElementById('activo').checked;
+    const seOcultoAutomaticamente = todasLasVariantesSinStock && activoElegido;
+
+    // Precio anterior (para mostrar tachado + % OFF en la tienda): es opcional,
+    // pero si se carga tiene que ser mayor al precio actual, si no no hay
+    // descuento que mostrar.
+    const precioActual = parsearPrecio(document.getElementById('precio').value);
+    const precioAnteriorTexto = document.getElementById('precio_anterior').value.trim();
+    const precioAnterior = precioAnteriorTexto ? parsearPrecio(precioAnteriorTexto) : null;
+
+    if (precioAnterior !== null && precioAnterior <= precioActual) {
+        mostrarToast('El precio anterior tiene que ser mayor al precio actual para mostrarse como oferta.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Guardar';
+        return;
+    }
+
+    const payload = {
+        emprendedor_id: perfilActual.id,
+        nombre: document.getElementById('nombre').value.trim(),
+        precio: precioActual,
+        precio_anterior: precioAnterior,
+        categoria_id: parseInt(document.getElementById('categoria').value),
+        imagen_url: imagenUrl,
+        descripcion: document.getElementById('descripcion').value.trim(),
+        activo: todasLasVariantesSinStock ? false : activoElegido,
+        medios_pago: mediosPagoProductoSeleccion
+    };
+
+    // "Nuevo" se marca a mano, pero le ponemos fecha para que no quede pegado
+    // para siempre: si se acaba de activar (antes no lo estaba), arrancamos
+    // el conteo de 5 días desde ahora. Si ya estaba activo, no tocamos la
+    // fecha (para no reiniciar los 5 días en cada edición). Si se desactiva,
+    // borramos la fecha.
+    const nuevoElegido = document.getElementById('nuevo').checked;
+    const productoAnterior = productoEditandoId ? productosCache.find(x => x.id === productoEditandoId) : null;
+    const yaEstabaMarcadoNuevo = !!(productoAnterior && productoAnterior.nuevo);
+
+    payload.nuevo = nuevoElegido;
+    if (nuevoElegido && !yaEstabaMarcadoNuevo) {
+        payload.nuevo_desde = new Date().toISOString();
+    } else if (!nuevoElegido) {
+        payload.nuevo_desde = null;
+    }
+    // (si nuevoElegido && yaEstabaMarcadoNuevo: no se incluye nuevo_desde en el
+    // payload, así el update no toca la fecha que ya estaba guardada)
+
+    try {
+        let productoId = productoEditandoId;
+
+        if (productoId) {
+            const { error } = await supabase.from('productos').update(payload).eq('id', productoId);
+            if (error) throw error;
+        } else {
+            const { data, error } = await supabase.from('productos').insert(payload).select().single();
+            if (error) throw error;
+            productoId = data.id;
+        }
+
+        // Borramos en Supabase las variantes que se quitaron en esta edición
+        if (variantesEliminadas.length > 0) {
+            await supabase.from('variantes').delete().in('id', variantesEliminadas);
+        }
+
+        // Sincronizamos variantes: actualizamos las que tienen id, insertamos las nuevas
+        for (const v of variantesEnEdicion) {
+            if (!v.nombre?.trim() || !v.valor?.trim()) continue; // salteamos filas vacías
+            const varPayload = {
+                producto_id: productoId,
+                nombre: v.nombre.trim(),
+                valor: v.valor.trim(),
+                precio_adicional: v.precio_adicional ? parsearPrecio(v.precio_adicional) : 0,
+                disponible: v.disponible !== false
+            };
+            if (v.id) {
+                await supabase.from('variantes').update(varPayload).eq('id', v.id);
+            } else {
+                await supabase.from('variantes').insert(varPayload);
+            }
+        }
+
+        cerrarFormulario();
+        await renderProductos();
+
+        if (seOcultoAutomaticamente) {
+            mostrarToast('Producto guardado, pero se ocultó de la tienda porque todas sus variantes están sin stock.', 'info', 5500);
+        } else {
+            mostrarToast(productoEditandoId ? 'Producto actualizado.' : 'Producto creado.', 'success');
+        }
+
+    } catch (err) {
+        console.error(err);
+        mostrarToast('Ocurrió un error guardando el producto.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Guardar';
+    }
+});
+
+async function eliminarProducto(id) {
+    const confirmado = await confirmarAccion(
+        'También se eliminarán sus variantes.',
+        { titulo: '¿Eliminar este producto?', textoConfirmar: 'Eliminar' }
+    );
+    if (!confirmado) return;
+
+    // Guardamos la imagen antes de borrar la fila, porque después de eliminada
+    // ya no vamos a poder consultarla. Comparamos como string porque "id" llega
+    // como string (viene del atributo onclick) y en el cache puede ser numérico.
+    const producto = productosCache.find(p => String(p.id) === String(id));
+    const imagenUrl = producto?.imagen_url;
+
+    const { error } = await supabase.from('productos').delete().eq('id', id);
+    if (error) { mostrarToast('No se pudo eliminar el producto.', 'error'); console.error(error); return; }
+
+    // Borramos también la imagen del storage para no dejar archivos huérfanos
+    // ocupando espacio. Es silencioso a propósito: si falla, no le suma nada
+    // al usuario saberlo (el producto ya se eliminó igual). Ojo: nunca borramos
+    // la foto default, porque es compartida por todos los productos sin imagen.
+    if (imagenUrl && imagenUrl !== IMAGEN_PRODUCTO_DEFAULT) {
+        try {
+            await borrarImagenProductoSupabase(imagenUrl);
+        } catch (err) {
+            console.error('No se pudo borrar la imagen del producto eliminado:', err);
+        }
+    }
+
+    mostrarToast('Producto eliminado.', 'success');
+    await renderProductos();
+}
+
+// Activa/desactiva el producto directamente desde la card, sin pasar por
+// el formulario de edición ni recargar toda la grilla. Un producto oculto
+// no se ve en el catálogo público ni se puede agregar al carrito (ver
+// sincronizarDisponibilidadCarrito en main.js / emprendedor.js).
+async function toggleActivoProducto(id, activoActual) {
+    const nuevoEstado = !activoActual;
+    const { error } = await supabase.from('productos').update({ activo: nuevoEstado }).eq('id', id);
+    if (error) { mostrarToast('No se pudo actualizar la visibilidad del producto.', 'error'); console.error(error); return; }
+
+    // Actualizamos el estado en memoria y repintamos al toque, sin volver
+    // a pedirle la lista completa a Supabase (eso evita el parpadeo/spinner
+    // que daba sensación de que la página se recargaba).
+    const item = productosCache.find(p => String(p.id) === String(id));
+    if (item) item.activo = nuevoEstado;
+    pintarGridProductos();
+}
+
+// Máximo de productos que se pueden marcar como "Destacados": aparecen
+// primero en el perfil público, con estrella y borde especial.
+const MAX_PRODUCTOS_DESTACADOS = 3;
+
+async function toggleDestacadoProducto(id, destacadoActual) {
+    const nuevoEstado = !destacadoActual;
+
+    if (nuevoEstado) {
+        const cantidadActual = productosCache.filter(p => p.destacado).length;
+        if (cantidadActual >= MAX_PRODUCTOS_DESTACADOS) {
+            mostrarToast(`Ya tenés ${MAX_PRODUCTOS_DESTACADOS} productos destacados. Sacá uno para agregar otro.`, 'error');
+            return;
+        }
+    }
+
+    const { error } = await supabase.from('productos').update({ destacado: nuevoEstado }).eq('id', id);
+    if (error) { mostrarToast('No se pudo actualizar el producto.', 'error'); console.error(error); return; }
+
+    const item = productosCache.find(p => String(p.id) === String(id));
+    if (item) item.destacado = nuevoEstado;
+    pintarGridProductos();
+
+    mostrarToast(nuevoEstado ? 'Producto marcado como destacado.' : 'Producto quitado de destacados.', 'success');
+}
+
+// ============================================================
+// PERFIL DEL EMPRENDEDOR
+// ============================================================
+async function cargarPerfilEmprendedor() {
+    let { data, error } = await supabase
+        .from('emprendedores')
+        .select('*')
+        .eq('id', perfilActual.id)
+        .single();
+
+    // Si la cuenta se creó a mano (auth + fila en "usuarios") todavía no existe
+    // la fila en "emprendedores" -> la creamos vacía la primera vez que entra.
+    if (error && error.code === 'PGRST116') {
+        const { data: nuevo, error: errorInsert } = await supabase
+            .from('emprendedores')
+            .insert({ id: perfilActual.id, nombre_tienda: perfilActual.usuario })
+            .select()
+            .single();
+        if (errorInsert) { console.error(errorInsert); return; }
+        data = nuevo;
+    } else if (error) {
+        console.error(error);
+        return;
+    }
+
+    emprendedorActual = data;
+    actualizarBannerBloqueo(emprendedorActual);
+
+    document.getElementById('p-nombre').value = data.nombre_tienda || '';
+    document.getElementById('p-nombre-real').value = data.nombre_real || '';
+    document.getElementById('p-dni').value = data.dni || '';
+    document.getElementById('p-whatsapp').value = data.whatsapp || '';
+    document.getElementById('p-logo').value = data.logo_url || '';
+    document.getElementById('p-banner').value = data.banner_url || '';
+    document.getElementById('p-bio').value = data.bio || '';
+    document.getElementById('p-ubicacion').value = data.ubicacion || '';
+    document.getElementById('p-mapa').value = data.mapa_url || '';
+    document.getElementById('p-horario').value = data.horario_atencion || '';
+    document.getElementById('p-instagram').value = data.instagram || '';
+    document.getElementById('p-facebook').value = data.facebook || '';
+    document.getElementById('p-tiktok').value = data.tiktok || '';
+    document.getElementById('p-costo-envio').value = data.costo_envio ? formatoPrecioInput(data.costo_envio) : '';
+    document.getElementById('p-anuncio').value = data.anuncio || '';
+
+    mediosPagoPerfilSeleccion = data.medios_pago || [];
+    renderMediosPagoPerfil();
+    actualizarTarjetaCuentaSidebar(data.nombre_tienda, data.logo_url);
+    actualizarPreviewLogo(data.logo_url);
+    actualizarPreviewBanner(data.banner_url);
+    actualizarContadorAnuncio();
+}
+
+// ============================================================
+// CREDENCIAL DIGITAL (QR de verificación en comercios)
+// ============================================================
+
+// Arma el link único que apunta a la pantalla pública de verificación.
+// Usa el mismo origen donde está alojado el sitio, así funciona igual
+// en local, en el dominio de prueba o en el dominio final.
+function obtenerLinkCredencial() {
+    if (!emprendedorActual || !emprendedorActual.id) return '';
+    return `${window.location.origin}/verificar.html?id=${emprendedorActual.id}`;
+}
+
+let qrCredencialInstancia = null;
+
+function renderCredencialQR() {
+    const aviso = document.getElementById('credencial-aviso-datos');
+    const card = document.getElementById('credencial-card');
+    const btnDescargar = document.getElementById('btn-descargar-credencial');
+    if (!emprendedorActual) return;
+
+    const faltanDatos = !emprendedorActual.nombre_real || !emprendedorActual.dni;
+    aviso.classList.toggle('hidden', !faltanDatos);
+    card.classList.toggle('hidden', faltanDatos);
+    btnDescargar.disabled = faltanDatos;
+    btnDescargar.classList.toggle('opacity-40', faltanDatos);
+    btnDescargar.classList.toggle('cursor-not-allowed', faltanDatos);
+    if (faltanDatos) return;
+
+    document.getElementById('credencial-nombre-tienda').textContent = emprendedorActual.nombre_tienda || '';
+
+    const box = document.getElementById('credencial-qr-box');
+    box.innerHTML = '';
+    // El QR en sí queda siempre negro sobre blanco (igual que en qr-cards.js):
+    // es lo que garantiza que escanee bien sin importar el diseño del carnet.
+    qrCredencialInstancia = new QRCode(box, {
+        text: obtenerLinkCredencial(),
+        width: 200,
+        height: 200,
+        colorDark: '#0b0c10',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M,
+    });
+}
+
+async function descargarCredencialQR() {
+    const card = document.getElementById('credencial-card');
+    if (!card || card.classList.contains('hidden')) return;
+
+    const btn = document.getElementById('btn-descargar-credencial');
+    const textoOriginal = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Generando…';
+
+    try {
+        // Igual que en qr-cards.js: esperamos a que las fuentes estén 100% cargadas
+        // antes de rasterizar. Si se captura con la tipografía a medio cargar,
+        // html-to-image cae a una fuente de reemplazo más ancha y el texto se
+        // desborda y se superpone (el bug que viste en la imagen).
+        if (document.fonts && document.fonts.ready) {
+            await document.fonts.ready;
+        }
+
+        // Sin backgroundColor (transparent): la tarjeta tiene esquinas
+        // redondeadas y fondo negro propio, así exportamos con fondo
+        // transparente para que esas esquinas no queden con un recuadro
+        // sólido al compartir la imagen.
+        // IMPORTANTE: no le pasamos width/height acá — igual que en
+        // qr-cards.js, dejamos que html-to-image mida el nodo real
+        // (que ya tiene un ancho fijo por CSS, ver dashboard.html).
+        // Forzar esos valores generaba un canvas más grande que la
+        // tarjeta y cortaba/desalineaba el contenido exportado.
+        const dataUrl = await htmlToImage.toPng(card, {
+            pixelRatio: 3,
+            cacheBust: true,
+        });
+
+        const link = document.createElement('a');
+        const slug = (emprendedorActual?.nombre_tienda || 'credencial').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        link.download = `credencial-${slug}.png`;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        mostrarToast('Credencial descargada.', 'success');
+    } catch (err) {
+        console.error('Error generando la imagen de la credencial:', err);
+        mostrarToast('No se pudo generar la imagen. Probá de nuevo.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = textoOriginal;
+    }
+}
+
+async function copiarLinkCredencial() {
+    const link = obtenerLinkCredencial();
+    if (!link) return;
+    await copiarAlPortapapeles(link, 'Enlace de credencial copiado.');
+}
+
+// ============================================================
+// SUBIDA DE IMAGEN — LOGO Y BANNER (Cloudinary)
+// ============================================================
+async function manejarSeleccionLogo(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const errorValidacion = validarImagenSeleccionada(file);
+    if (errorValidacion) {
+        mostrarToast(errorValidacion, 'error');
+        event.target.value = '';
+        return;
+    }
+
+    mostrarSpinnerImagen('p-logo', true);
+    try {
+        const url = await subirImagenCloudinary(file, 800);
+        document.getElementById('p-logo').value = url;
+        actualizarPreviewLogo(url);
+        actualizarTarjetaCuentaSidebar(document.getElementById('p-nombre').value, url);
+    } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudo subir el logo. Probá de nuevo.', 'error');
+    } finally {
+        mostrarSpinnerImagen('p-logo', false);
+        event.target.value = '';
+    }
+}
+
+async function manejarSeleccionBanner(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const errorValidacion = validarImagenSeleccionada(file);
+    if (errorValidacion) {
+        mostrarToast(errorValidacion, 'error');
+        event.target.value = '';
+        return;
+    }
+
+    mostrarSpinnerImagen('p-banner', true);
+    try {
+        const url = await subirImagenCloudinary(file, 1600);
+        document.getElementById('p-banner').value = url;
+        actualizarPreviewBanner(url);
+    } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudo subir el banner. Probá de nuevo.', 'error');
+    } finally {
+        mostrarSpinnerImagen('p-banner', false);
+        event.target.value = '';
+    }
+}
+
+// Muestra la preview del banner (o el placeholder si está vacío/URL inválida)
+function actualizarPreviewBanner(url) {
+    const img = document.getElementById('p-banner-preview');
+    const placeholder = document.getElementById('p-banner-preview-placeholder');
+    const valor = (url || '').trim();
+
+    if (!valor) {
+        img.classList.add('hidden');
+        img.src = '';
+        placeholder.classList.remove('hidden');
+        return;
+    }
+
+    img.onerror = () => {
+        img.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+    };
+    img.onload = () => {
+        img.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+    };
+    img.src = valor;
+}
+
+// Muestra la preview de la imagen del logo (o el placeholder si está vacío/URL inválida)
+function actualizarPreviewLogo(url) {
+    const img = document.getElementById('p-logo-preview');
+    const placeholder = document.getElementById('p-logo-preview-placeholder');
+    const valor = (url || '').trim();
+
+    if (!valor) {
+        img.classList.add('hidden');
+        img.src = '';
+        placeholder.classList.remove('hidden');
+        return;
+    }
+
+    img.onerror = () => {
+        img.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+    };
+    img.onload = () => {
+        img.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+    };
+    img.src = valor;
+}
+
+// Refleja el nombre de la tienda (o el usuario si todavía no lo cargó) y el logo
+// en la tarjeta de cuenta del sidebar. Si no hay logo (o la URL falla), muestra
+// la letra inicial como respaldo.
+function actualizarTarjetaCuentaSidebar(nombreTienda, logoUrl) {
+    const nombre = (nombreTienda || '').trim() || perfilActual.usuario;
+    document.getElementById('nombre-tienda-sidebar').textContent = nombre;
+
+    const letra = document.getElementById('avatar-sidebar-letra');
+    const img = document.getElementById('avatar-sidebar-img');
+    letra.textContent = nombre.charAt(0).toUpperCase();
+
+    const url = (logoUrl || '').trim();
+    if (!url) {
+        img.classList.add('hidden');
+        img.src = '';
+        letra.classList.remove('hidden');
+        return;
+    }
+
+    img.onload = () => {
+        img.classList.remove('hidden');
+        letra.classList.add('hidden');
+    };
+    img.onerror = () => {
+        img.classList.add('hidden');
+        letra.classList.remove('hidden');
+    };
+    img.src = url;
+}
+
+async function guardarPerfil() {
+    const btn = document.getElementById('btn-guardar-perfil-2');
+    const textoOriginal = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = 'Guardando...';
+
+    const datos = {
+        nombre_tienda: document.getElementById('p-nombre').value.trim(),
+        nombre_real: document.getElementById('p-nombre-real').value.trim(),
+        dni: document.getElementById('p-dni').value.trim(),
+        whatsapp: document.getElementById('p-whatsapp').value.trim(),
+        logo_url: document.getElementById('p-logo').value.trim(),
+        banner_url: document.getElementById('p-banner').value.trim(),
+        bio: document.getElementById('p-bio').value.trim(),
+        ubicacion: document.getElementById('p-ubicacion').value.trim(),
+        mapa_url: document.getElementById('p-mapa').value.trim(),
+        horario_atencion: document.getElementById('p-horario').value.trim(),
+        instagram: document.getElementById('p-instagram').value.trim(),
+        facebook: document.getElementById('p-facebook').value.trim(),
+        tiktok: document.getElementById('p-tiktok').value.trim(),
+        medios_pago: mediosPagoPerfilSeleccion,
+        costo_envio: parsearPrecio(document.getElementById('p-costo-envio').value)
+    };
+
+    const { error } = await supabase.from('emprendedores').update(datos).eq('id', perfilActual.id);
+
+    if (error) {
+        console.error(error);
+        btn.innerText = 'Error al guardar ✕';
+        btn.classList.replace('bg-obsidian', 'bg-red-500');
+    } else {
+        if (emprendedorActual) {
+            Object.assign(emprendedorActual, datos);
+            emprendedorActual.medios_pago = mediosPagoPerfilSeleccion;
+            emprendedorActual.costo_envio = datos.costo_envio;
+        }
+        actualizarTarjetaCuentaSidebar(datos.nombre_tienda, datos.logo_url);
+        btn.innerText = '¡PERFIL ACTUALIZADO! ✓';
+        btn.classList.replace('bg-obsidian', 'bg-green-500');
+    }
+
+    setTimeout(() => {
+        btn.innerText = textoOriginal;
+        btn.classList.remove('bg-green-500', 'bg-red-500');
+        btn.classList.add('bg-obsidian');
+        btn.disabled = false;
+    }, 2000);
+}
+
+// ============================================================
+// ANUNCIOS (barra temporal arriba del perfil público)
+// ============================================================
+function actualizarContadorAnuncio() {
+    const texto = document.getElementById('p-anuncio').value;
+    document.getElementById('contador-anuncio').textContent = texto.length;
+
+    const previewTexto = texto.trim();
+    document.getElementById('preview-anuncio-texto').textContent = previewTexto;
+    document.getElementById('preview-anuncio-wrap').classList.toggle('hidden', !previewTexto);
+    document.getElementById('preview-anuncio-wrap').classList.toggle('flex', !!previewTexto);
+    document.getElementById('preview-anuncio-vacio').classList.toggle('hidden', !!previewTexto);
+}
+
+async function guardarAnuncio() {
+    const btn = document.getElementById('btn-guardar-anuncio');
+    const textoOriginal = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = 'Guardando...';
+
+    const anuncio = document.getElementById('p-anuncio').value.trim();
+
+    const { error } = await supabase.from('emprendedores').update({ anuncio }).eq('id', perfilActual.id);
+
+    if (error) {
+        console.error(error);
+        btn.innerText = 'Error al guardar ✕';
+        btn.classList.replace('bg-obsidian', 'bg-red-500');
+    } else {
+        if (emprendedorActual) emprendedorActual.anuncio = anuncio;
+        document.getElementById('p-anuncio').value = anuncio;
+        actualizarContadorAnuncio();
+        btn.innerText = anuncio ? '¡ANUNCIO PUBLICADO! ✓' : '¡ANUNCIO GUARDADO! ✓';
+        btn.classList.replace('bg-obsidian', 'bg-green-500');
+    }
+
+    setTimeout(() => {
+        btn.innerText = textoOriginal;
+        btn.classList.remove('bg-green-500', 'bg-red-500');
+        btn.classList.add('bg-obsidian');
+        btn.disabled = false;
+    }, 2000);
+}
+
+async function quitarAnuncio() {
+    const actual = document.getElementById('p-anuncio').value.trim();
+    if (!actual) {
+        mostrarToast('No tenés ningún anuncio activo.', 'info');
+        return;
+    }
+    const ok = await confirmarAccion('Se va a dejar de mostrar la barra de anuncio en tu perfil.', {
+        titulo: '¿Quitar el anuncio?',
+        textoConfirmar: 'Quitar',
+        peligro: true,
+    });
+    if (!ok) return;
+
+    document.getElementById('p-anuncio').value = '';
+    await guardarAnuncio();
+}
