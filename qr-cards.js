@@ -112,9 +112,11 @@ let paletaQRActiva = 'amarillo';
 let fuenteQRActiva = 'jakarta';
 let qrDataUrlCache = null; // el QR es siempre el mismo link, lo generamos una sola vez
 
+// Usa SITIO_PUBLICO (definido en supabase-client.js) en vez de window.location.origin,
+// porque este panel puede vivir en un dominio distinto (Vercel) al del sitio
+// público (Cloudflare), donde realmente está emprendedor.html.
 function obtenerLinkTienda() {
-    const directorioActual = window.location.pathname.replace(/[^/]*$/, '');
-    return `${window.location.origin}${directorioActual}emprendedor.html?t=${encodeURIComponent(perfilActual.usuario)}`;
+    return `${SITIO_PUBLICO}/emprendedor.html?t=${encodeURIComponent(perfilActual.usuario)}`;
 }
 
 async function generarQRDataUrl() {
@@ -467,7 +469,10 @@ async function renderFormatoQR(formato) {
     const logoHtml = logoUrl
         ? `<img src="${miniaturaCloudinary(logoUrl, 160)}" crossorigin="anonymous" class="w-16 h-16 rounded-2xl object-cover border border-slate-200" />`
         : '';
-    const host = window.location.hostname;
+    // Se muestra como texto en el cartel (ej. "comunidadplace.pages.dev"). Usa
+    // SITIO_PUBLICO en vez de window.location.hostname porque este panel puede
+    // vivir en un dominio distinto (Vercel) al del sitio público (Cloudflare).
+    const host = SITIO_PUBLICO.replace(/^https?:\/\//, '');
     const paleta = PALETAS_QR[paletaQRActiva];
     const fuente = FUENTES_QR[fuenteQRActiva];
 
