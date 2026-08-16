@@ -55,7 +55,7 @@
                 '</svg>' +
             '</span>' +
             '<span class="pwa-update-toast__text">' +
-                '<span class="pwa-update-toast__title">Nueva versión disponible</span>' +
+                '<span class="pwa-update-toast__title">Nueva versión de la app</span>' +
                 '<span class="pwa-update-toast__desc">Actualizá para ver los últimos cambios</span>' +
             '</span>' +
             '<button type="button">Actualizar</button>';
