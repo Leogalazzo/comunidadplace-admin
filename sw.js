@@ -5,7 +5,7 @@
 // relevantes. Al cambiar, el Service Worker detecta que es "nuevo",
 // vuelve a precargar todo y le avisa al usuario para que actualice
 // (ver pwa.js, que muestra el aviso "Hay una nueva versión disponible").
-const VERSION = 'v2.2.1';
+const VERSION = 'v1.1.3';
 const CACHE_NAME = `comunidadplace-${VERSION}`;
 
 // Archivos propios de la app (rutas relativas, sin "/", para que funcionen
@@ -34,7 +34,12 @@ const ARCHIVOS_PRECARGA = [
 // no subiste), no rompa la instalación completa del Service Worker.
 // ------------------------------------------------------------
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
+  // OJO: NO llamar self.skipWaiting() acá. Si lo hacemos, el SW nuevo
+  // toma control apenas se instala (sin esperar al usuario), dispara
+  // "controllerchange" en pwa.js y la página se recarga sola antes de
+  // que el usuario llegue a ver el aviso. El skipWaiting real lo dispara
+  // pwa.js recién cuando el usuario toca el botón "Actualizar"
+  // (ver el listener de "message" más abajo).
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
       Promise.allSettled(
