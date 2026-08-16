@@ -137,17 +137,24 @@ html.pwa-standalone .pwa-splash {
 
 /* ------------------------------------------------------------
    Aviso de nueva versión disponible
+   Ajustado para verse bien en mobile:
+   - width fluido en vez de max-width solo
+   - flex-wrap por si el texto es largo
+   - respeta el safe-area-inset-bottom (notch / home indicator)
+   - botón con mejor área táctil
    ------------------------------------------------------------ */
 
 .pwa-update-toast {
     position: fixed;
     left: 50%;
-    bottom: 1.25rem;
+    bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
     z-index: 99998;
     display: flex;
     align-items: center;
-    gap: .75rem;
-    max-width: 92vw;
+    flex-wrap: wrap;
+    gap: .6rem;
+    width: calc(100vw - 2rem);
+    max-width: 380px;
     padding: .75rem .75rem .75rem 1rem;
     border-radius: .9rem;
     background: #111827;
@@ -160,6 +167,11 @@ html.pwa-standalone .pwa-splash {
     transition: transform .45s cubic-bezier(.16, 1, .3, 1);
 }
 
+.pwa-update-toast span {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
 .pwa-update-toast.pwa-update-toast-show {
     transform: translate(-50%, 0);
 }
@@ -168,7 +180,7 @@ html.pwa-standalone .pwa-splash {
     flex-shrink: 0;
     border: none;
     border-radius: .55rem;
-    padding: .45rem .8rem;
+    padding: .5rem .9rem;
     background: #facc15;
     color: #000;
     font-weight: 800;
@@ -176,6 +188,7 @@ html.pwa-standalone .pwa-splash {
     text-transform: uppercase;
     letter-spacing: .04em;
     cursor: pointer;
+    min-height: 2.2rem;
 }
 
 .pwa-update-toast button:active {
