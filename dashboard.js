@@ -972,6 +972,88 @@ function renderCredencialQR() {
     });
 }
 
+// html-to-image, por default, escanea TODAS las hojas de estilo de la página
+// (incluidas las tipografías del cartel QR que la credencial ni usa) y trata
+// de bajar cada fuente para incrustarla como base64 en la imagen exportada.
+// En datos móviles ese fetch puede fallar o tardar y tirar un error genérico
+// tipo "[object Event]". Por eso: primer intento normal (con fuentes, mejor
+// calidad); si falla, reintentamos con skipFonts para garantizar que al
+// menos la descarga/compartir funcione, aunque el texto caiga a la fuente
+// default en vez de Plus Jakarta Sans.
+async function rasterizarConReintento(nodo, opciones) {
+    try {
+        return await htmlToImage.toBlob(nodo, opciones);
+    } catch (err) {
+        console.warn('Falló la exportación con fuentes embebidas, reintentando sin ellas:', err);
+        return await htmlToImage.toBlob(nodo, { ...opciones, skipFonts: true });
+    }
+}
+
+// Genera el QR "horneado" como data URL fija (mismo truco que en qr-cards.js:
+// generarQRDataUrl). Dibujamos con qrcodejs en un contenedor invisible,
+// leemos el <img>/<canvas> resultante como data URL, y descartamos el
+// contenedor: así el QR queda como una simple imagen estática en vez de
+// quedar vivo (canvas + img mezclados) en el nodo que despues exportamos.
+async function generarCredencialQrDataUrl() {
+    const link = obtenerLinkCredencial();
+    const contenedorTemporal = document.createElement('div');
+    contenedorTemporal.style.position = 'fixed';
+    contenedorTemporal.style.left = '-9999px';
+    document.body.appendChild(contenedorTemporal);
+
+    new QRCode(contenedorTemporal, {
+        text: link,
+        width: 500,
+        height: 500,
+        colorDark: '#0b0c10',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M,
+    });
+
+    const img = contenedorTemporal.querySelector('img');
+    const canvas = contenedorTemporal.querySelector('canvas');
+    const dataUrl = (img && img.src) || (canvas && canvas.toDataURL('image/png'));
+    contenedorTemporal.remove();
+
+    if (!dataUrl) throw new Error('No se pudo generar el código QR.');
+    return dataUrl;
+}
+
+// Arma una copia de la credencial fuera de pantalla, con el QR ya como
+// imagen estática (ver generarCredencialQrDataUrl) — igual que hace
+// qr-cards.js con sus tarjetas: exportamos esta copia descartable en vez
+// del nodo visible real, para no depender de layout/canvas en vivo.
+function construirCredencialOffscreen(qrDataUrl) {
+    const nombreTienda = (emprendedorActual?.nombre_tienda || '').trim();
+    // Escapamos el nombre de la tienda porque va directo en un innerHTML:
+    // si tuviera comillas o < > podría romper el markup de la tarjeta.
+    const nombreEscapado = nombreTienda
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'fixed';
+    wrapper.style.left = '-9999px';
+    wrapper.style.top = '0';
+    wrapper.innerHTML = `
+        <div style="width:300px; border-radius:24px; padding:32px 24px 28px 24px; display:flex; flex-direction:column; align-items:center; text-align:center; background: radial-gradient(circle at 88% 4%, rgba(250,204,21,0.14), transparent 45%), #0b0c10; font-family:'Plus Jakarta Sans', sans-serif;">
+            <span style="font-size:10px; font-weight:700; letter-spacing:0.25em; color:rgba(255,255,255,0.4); text-transform:uppercase; white-space:nowrap;">Comunidad Place</span>
+            <span style="font-size:10px; font-weight:700; letter-spacing:0.2em; color:#facc15; text-transform:uppercase; margin-top:4px; white-space:nowrap;">Credencial Digital</span>
+            <p style="font-size:18px; font-weight:800; line-height:1.375; color:#ffffff; margin:12px 8px 20px 8px;">${nombreEscapado}</p>
+            <div style="padding:12px; border-radius:16px; background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)); border:1px solid rgba(250,204,21,0.25);">
+                <div style="padding:10px; background:#ffffff; border-radius:12px;">
+                    <img src="${qrDataUrl}" width="200" height="200" style="display:block; width:200px; height:200px;" />
+                </div>
+            </div>
+            <p style="font-size:11px; color:rgba(255,255,255,0.4); margin-top:20px; line-height:1.6; max-width:220px;">
+                El comercio escanea este código, no necesita ninguna app ni contraseña.
+            </p>
+        </div>`;
+    document.body.appendChild(wrapper);
+    return wrapper;
+}
+
 async function descargarCredencialQR() {
     const card = document.getElementById('credencial-card');
     if (!card || card.classList.contains('hidden')) return;
@@ -981,6 +1063,7 @@ async function descargarCredencialQR() {
     btn.disabled = true;
     btn.textContent = 'Generando…';
 
+    let wrapper = null;
     try {
         // Igual que en qr-cards.js: esperamos a que las fuentes estén 100% cargadas
         // antes de rasterizar. Si se captura con la tipografía a medio cargar,
@@ -990,33 +1073,50 @@ async function descargarCredencialQR() {
             await document.fonts.ready;
         }
 
-        // Sin backgroundColor (transparent): la tarjeta tiene esquinas
-        // redondeadas y fondo negro propio, así exportamos con fondo
-        // transparente para que esas esquinas no queden con un recuadro
-        // sólido al compartir la imagen.
-        // IMPORTANTE: no le pasamos width/height acá — igual que en
-        // qr-cards.js, dejamos que html-to-image mida el nodo real
-        // (que ya tiene un ancho fijo por CSS, ver dashboard.html).
-        // Forzar esos valores generaba un canvas más grande que la
-        // tarjeta y cortaba/desalineaba el contenido exportado.
-        const dataUrl = await htmlToImage.toPng(card, {
+        const qrDataUrl = await generarCredencialQrDataUrl();
+        wrapper = construirCredencialOffscreen(qrDataUrl);
+        const nodo = wrapper.firstElementChild;
+
+        const blob = await rasterizarConReintento(nodo, {
             pixelRatio: 3,
             cacheBust: true,
         });
+        if (!blob) throw new Error('htmlToImage.toBlob devolvió null');
 
-        const link = document.createElement('a');
         const slug = (emprendedorActual?.nombre_tienda || 'credencial').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        link.download = `credencial-${slug}.png`;
-        link.href = dataUrl;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
+        const nombreArchivo = `credencial-${slug}.png`;
+        const archivo = new File([blob], nombreArchivo, { type: 'image/png' });
 
-        mostrarToast('Credencial descargada.', 'success');
+        // Mismo criterio que en qr-cards.js: en mobile el <a download> no fuerza
+        // la descarga (sobre todo iOS Safari), así que usamos Web Share API para
+        // abrir la hoja nativa de guardar/compartir. En desktop seguimos con el
+        // <a download> de siempre. esMobile() vive en qr-cards.js, que se carga
+        // después de este archivo, pero para cuando el usuario hace click ya
+        // están los dos scripts cargados.
+        if (typeof esMobile === 'function' && esMobile() && navigator.canShare && navigator.canShare({ files: [archivo] })) {
+            await navigator.share({
+                files: [archivo],
+                title: 'Credencial',
+            });
+            mostrarToast('¡Listo! Guardala desde el panel para compartir.', 'success');
+        } else {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = nombreArchivo;
+            link.href = url;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+            mostrarToast('Credencial descargada.', 'success');
+        }
     } catch (err) {
-        console.error('Error generando la imagen de la credencial:', err);
-        mostrarToast('No se pudo generar la imagen. Probá de nuevo.', 'error');
+        if (err.name !== 'AbortError') {
+            console.error('Error generando la imagen de la credencial:', err);
+            mostrarToast(`No se pudo generar la imagen (${err.name || 'Error'}: ${err.message || err}).`, 'error');
+        }
     } finally {
+        if (wrapper) wrapper.remove();
         btn.disabled = false;
         btn.textContent = textoOriginal;
     }
