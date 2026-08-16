@@ -5,7 +5,7 @@
 // relevantes. Al cambiar, el Service Worker detecta que es "nuevo",
 // vuelve a precargar todo y le avisa al usuario para que actualice
 // (ver pwa.js, que muestra el aviso "Hay una nueva versión disponible").
-const VERSION = 'v2.3.4';
+const VERSION = 'v1.2.0';
 const CACHE_NAME = `comunidadplace-${VERSION}`;
 
 // Archivos propios de la app (rutas relativas, sin "/", para que funcionen
@@ -97,6 +97,19 @@ self.addEventListener('fetch', (event) => {
   const esMismoOrigen = url.origin === self.location.origin;
   const esNavegacion = request.mode === 'navigate';
   const esRecursoPropio = esMismoOrigen && /\.(html|js|css|json)$/.test(url.pathname);
+
+  // Las llamadas a la API de Supabase (productos, categorías, perfil, pedidos,
+  // etc.) son datos en vivo: cachearlas -aunque sea con "stale-while-revalidate"-
+  // hacía que el dashboard mostrara información vieja (ej: un producto que se
+  // acababa de ocultar seguía apareciendo como "Visible") hasta que, más tarde,
+  // la revalidación en segundo plano terminaba de actualizar la caché. Estas
+  // peticiones van siempre directo a la red, sin pasar por el Service Worker.
+  const esApiSupabase = /(^|\.)supabase\.co$/.test(url.hostname);
+
+  if (esApiSupabase) {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   if (esNavegacion || esRecursoPropio) {
     event.respondWith(networkFirst(request));
