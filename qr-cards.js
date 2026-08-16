@@ -523,18 +523,42 @@ async function descargarTarjetaQR() {
             cacheBust: true,
         });
 
-        const link = document.createElement('a');
         const slug = (perfilActual.usuario || 'tienda').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        link.download = `${FORMATOS_QR[formatoQRActivo].archivo}-${slug}.png`;
-        link.href = dataUrl;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
+        const nombreArchivo = `${FORMATOS_QR[formatoQRActivo].archivo}-${slug}.png`;
 
-        mostrarToast('Imagen descargada. ¡Lista para imprimir o compartir!', 'success');
+        // En mobile (sobre todo iOS Safari) el <a download> no sirve como "forzar
+        // descarga": al llegar acá ya pasamos por dos await (fonts.ready y
+        // htmlToImage.toPng), así que el click() ya no cuenta como gesto directo
+        // del usuario, y Safari nunca soportó bien 'download' con data URLs de
+        // todos modos — en vez de guardar, abre la imagen en una pestaña nueva.
+        // Por eso en mobile usamos Web Share API: dispara la hoja nativa de
+        // compartir/guardar, que es el flujo que sí funciona ahí. En desktop
+        // seguimos con el <a download> de toda la vida.
+        const blob = await (await fetch(dataUrl)).blob();
+        const archivo = new File([blob], nombreArchivo, { type: 'image/png' });
+
+        if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+            await navigator.share({
+                files: [archivo],
+                title: 'Credencial QR',
+            });
+            mostrarToast('¡Listo! Guardala desde el panel para compartir.', 'success');
+        } else {
+            const link = document.createElement('a');
+            link.download = nombreArchivo;
+            link.href = dataUrl;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            mostrarToast('Imagen descargada. ¡Lista para imprimir o compartir!', 'success');
+        }
     } catch (err) {
-        console.error('Error generando la tarjeta QR:', err);
-        mostrarToast('No se pudo generar la imagen. Probá de nuevo.', 'error');
+        // Si el usuario cancela el panel de compartir (navigator.share) no es un
+        // error real, así que no mostramos el toast de "algo salió mal".
+        if (err.name !== 'AbortError') {
+            console.error('Error generando la tarjeta QR:', err);
+            mostrarToast('No se pudo generar la imagen. Probá de nuevo.', 'error');
+        }
     } finally {
         btn.disabled = false;
         label.textContent = textoOriginal;
