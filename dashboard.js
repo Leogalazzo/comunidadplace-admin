@@ -275,8 +275,8 @@ function pintarGridProductos() {
     const hayFiltrosActivos = !!(filtroBusquedaProductos.trim() || filtroEstadoProductos !== 'todos' || filtroCategoriaProductos);
 
     contadorProductos.textContent = hayFiltrosActivos
-        ? `${productos.length} de ${productosCache.length} producto${productosCache.length === 1 ? '' : 's'} · ${totalVisibles} visible${totalVisibles === 1 ? '' : 's'} en total · ${totalDestacados}/3 destacados`
-        : `${productosCache.length} producto${productosCache.length === 1 ? '' : 's'} · ${totalVisibles} visible${totalVisibles === 1 ? '' : 's'} · ${totalDestacados}/3 destacados`;
+        ? `${productos.length} de ${productosCache.length} producto${productosCache.length === 1 ? '' : 's'} · ${totalVisibles} con stock en total · ${totalDestacados}/3 destacados`
+        : `${productosCache.length} producto${productosCache.length === 1 ? '' : 's'} · ${totalVisibles} con stock · ${totalDestacados}/3 destacados`;
 
     // Hay productos en la cuenta, pero ninguno coincide con el filtro actual
     if (productos.length === 0) {
@@ -298,7 +298,7 @@ function pintarGridProductos() {
                 <img src="${miniaturaCloudinary(p.imagen_url, 400)}" alt="${escapeHtml(p.nombre)}" class="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500" loading="lazy" decoding="async">
                 <span class="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 flex items-center gap-1 text-[8px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-full backdrop-blur-sm ${p.activo ? 'bg-emerald-500/90 text-white' : 'bg-slate-900/75 text-white'}">
                     <span class="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white/90"></span>
-                    ${p.activo ? 'Visible' : 'Oculto'}
+                    ${p.activo ? 'Visible' : 'Sin stock'}
                 </span>
                 <button onclick="toggleDestacadoProducto('${p.id}', ${!!p.destacado})" title="${p.destacado ? 'Quitar de destacados' : 'Marcar como destacado'}"
                     class="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-all backdrop-blur-sm ${p.destacado ? 'bg-yellow-400 text-black shadow-md shadow-yellow-400/50' : 'bg-black/35 text-white/85 hover:bg-black/55'}">
@@ -906,7 +906,7 @@ async function cargarPerfilEmprendedor() {
     document.getElementById('p-nombre').value = data.nombre_tienda || '';
     document.getElementById('p-nombre-real').value = data.nombre_real || '';
     document.getElementById('p-dni').value = data.dni || '';
-    document.getElementById('p-whatsapp').value = data.whatsapp || '';
+    document.getElementById('p-whatsapp').value = (data.whatsapp || '').replace(/^549/, '');
     document.getElementById('p-logo').value = data.logo_url || '';
     document.getElementById('p-banner').value = data.banner_url || '';
     document.getElementById('p-bio').value = data.bio || '';
@@ -1270,7 +1270,11 @@ async function guardarPerfil() {
         nombre_tienda: document.getElementById('p-nombre').value.trim(),
         nombre_real: document.getElementById('p-nombre-real').value.trim(),
         dni: document.getElementById('p-dni').value.trim(),
-        whatsapp: document.getElementById('p-whatsapp').value.trim(),
+        whatsapp: (() => {
+            const num = document.getElementById('p-whatsapp').value.trim().replace(/\D/g, '');
+            if (!num) return '';
+            return num.startsWith('549') ? num : '549' + num;
+        })(),
         logo_url: document.getElementById('p-logo').value.trim(),
         banner_url: document.getElementById('p-banner').value.trim(),
         bio: document.getElementById('p-bio').value.trim(),
