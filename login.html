@@ -52,6 +52,51 @@
         </div>
     </div>
 
+    <!-- Modal: instrucciones de instalación para iOS (Safari no soporta el prompt nativo) -->
+    <div id="modal-instalar-ios" class="pwa-modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-instalar-ios-titulo">
+        <div class="pwa-modal__overlay" id="modal-instalar-ios-overlay"></div>
+        <div class="pwa-modal__card">
+            <button type="button" id="modal-instalar-ios-cerrar" class="pwa-modal__close" aria-label="Cerrar">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+            <div class="w-11 h-11 bg-yellow-400 rounded-xl flex items-center justify-center mb-3 shadow-[0_2px_14px_rgba(250,204,21,0.35)]">
+                <svg class="w-[22px] h-[22px] text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z" />
+                </svg>
+            </div>
+            <h2 id="modal-instalar-ios-titulo" class="text-base sm:text-lg font-black uppercase italic tracking-tight text-gray-900 mb-1">
+                Instalar en iPhone / iPad
+            </h2>
+            <p class="text-gray-500 text-xs sm:text-sm font-medium mb-4">
+                Agregá Comunidad Place a tu pantalla de inicio en 2 pasos:
+            </p>
+            <ol class="space-y-3">
+                <li class="flex items-start gap-3">
+                    <span class="pwa-modal__step">1</span>
+                    <span class="text-xs sm:text-sm font-semibold text-gray-700 pt-0.5">
+                        Tocá el botón <strong>Compartir</strong>
+                        <svg class="inline w-4 h-4 -mt-0.5 mx-0.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 12V3m0 0L8 7m4-4l4 4"/>
+                        </svg>
+                        en la barra de Safari.
+                    </span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="pwa-modal__step">2</span>
+                    <span class="text-xs sm:text-sm font-semibold text-gray-700 pt-0.5">
+                        Elegí <strong>"Agregar a inicio"</strong> y confirmá.
+                    </span>
+                </li>
+            </ol>
+            <button type="button" id="modal-instalar-ios-entendido"
+                class="w-full mt-5 bg-black text-white py-3 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-yellow-400 hover:text-black transition-all duration-200 active:scale-[0.98]">
+                Entendido
+            </button>
+        </div>
+    </div>
+
     <!-- Fondo decorativo moderno (Ambient Glow) -->
     <div class="absolute -top-32 -left-32 w-96 h-96 bg-yellow-400/10 rounded-full blur-3xl pointer-events-none"></div>
     <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-yellow-400/5 rounded-full blur-3xl pointer-events-none"></div>
@@ -143,6 +188,17 @@
                     <span>Ingresar</span>
                 </button>
             </form>
+        </div>
+
+        <!-- Instalar App (PWA) -->
+        <div id="bloque-instalar-app" class="hidden mt-3 sm:mt-5">
+            <button type="button" id="btn-install-app"
+                class="w-full inline-flex items-center justify-center gap-2 sm:gap-2.5 bg-yellow-400 text-black py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl font-black uppercase text-[11px] sm:text-xs tracking-widest hover:bg-yellow-300 focus:ring-4 focus:ring-yellow-400/30 transition-all duration-200 shadow-[0_4px_18px_rgba(250,204,21,0.35)] active:scale-[0.98]">
+                <svg class="w-4 h-4 sm:w-[18px] sm:h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v13m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>
+                </svg>
+                <span>Instalar app</span>
+            </button>
         </div>
 
         <!-- Ayuda + Enlace volver -->
