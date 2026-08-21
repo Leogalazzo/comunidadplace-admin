@@ -228,6 +228,103 @@ html.pwa-standalone .pwa-splash {
     transform: scale(.96);
 }
 
+/* ------------------------------------------------------------
+   Modal: instrucciones de instalación (iOS)
+   ------------------------------------------------------------ */
+
+.pwa-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 99997;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+}
+
+.pwa-modal.hidden {
+    display: none;
+}
+
+.pwa-modal__overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(11, 12, 16, .6);
+    backdrop-filter: blur(2px);
+    animation: pwaModalFade .25s ease-out;
+}
+
+.pwa-modal__card {
+    position: relative;
+    width: 100%;
+    max-width: 26rem;
+    background: #fff;
+    border-radius: 1.5rem 1.5rem 0 0;
+    padding: 1.5rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom, 0px)) 1.5rem;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, .35);
+    animation: pwaModalSlideUp .3s cubic-bezier(.16, 1, .3, 1);
+}
+
+.pwa-modal__close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    background: #f3f4f6;
+    border: none;
+    cursor: pointer;
+}
+
+.pwa-modal__close:active {
+    transform: scale(.92);
+}
+
+.pwa-modal__step {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 9999px;
+    background: #facc15;
+    color: #000;
+    font-size: .7rem;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes pwaModalFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes pwaModalSlideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (min-width: 560px) {
+    .pwa-modal {
+        align-items: center;
+    }
+
+    .pwa-modal__card {
+        border-radius: 1.5rem;
+        padding: 1.75rem;
+    }
+
+    @keyframes pwaModalSlideUp {
+        from { opacity: 0; transform: translateY(10px) scale(.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+}
+
 @media (min-width: 560px) {
     .pwa-update-toast {
         left: 50%;
