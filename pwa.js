@@ -69,7 +69,100 @@
     }
 
     // --------------------------------------------------------
-    // 2) SPLASH SCREEN: solo visible cuando la app corre instalada
+    // 2) INSTALAR APP: botón "Instalar app" en login.html
+    //    - Chrome/Edge/Android: usamos el evento beforeinstallprompt,
+    //      que el navegador dispara si la PWA cumple los requisitos
+    //      (manifest + service worker + servida por https).
+    //    - iOS/Safari: no existe ese evento, así que si detectamos iOS
+    //      y la app no está ya instalada, mostramos el botón igual pero
+    //      al tocarlo abrimos un modal con instrucciones manuales
+    //      (Compartir → Agregar a inicio).
+    //    - Si la app ya corre instalada (standalone), el botón queda oculto.
+    // --------------------------------------------------------
+    (function () {
+        const bloqueInstalar = document.getElementById('bloque-instalar-app');
+        const btnInstalar = document.getElementById('btn-install-app');
+        if (!bloqueInstalar || !btnInstalar) return;
+
+        const modalIOS = document.getElementById('modal-instalar-ios');
+        const modalIOSOverlay = document.getElementById('modal-instalar-ios-overlay');
+        const modalIOSCerrar = document.getElementById('modal-instalar-ios-cerrar');
+        const modalIOSEntendido = document.getElementById('modal-instalar-ios-entendido');
+
+        const esStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+
+        if (esStandalone) return; // ya instalada, no mostramos nada
+
+        let promptDiferido = null;
+
+        function mostrarBotonInstalar() {
+            bloqueInstalar.classList.remove('hidden');
+        }
+
+        function ocultarBotonInstalar() {
+            bloqueInstalar.classList.add('hidden');
+        }
+
+        function abrirModalIOS() {
+            if (!modalIOS) return;
+            modalIOS.classList.remove('hidden');
+        }
+
+        function cerrarModalIOS() {
+            if (!modalIOS) return;
+            modalIOS.classList.add('hidden');
+        }
+
+        if (modalIOSOverlay) modalIOSOverlay.addEventListener('click', cerrarModalIOS);
+        if (modalIOSCerrar) modalIOSCerrar.addEventListener('click', cerrarModalIOS);
+        if (modalIOSEntendido) modalIOSEntendido.addEventListener('click', cerrarModalIOS);
+
+        // Chrome / Edge / Android: el navegador avisa que la PWA es instalable
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            promptDiferido = e;
+            mostrarBotonInstalar();
+        });
+
+        // iOS Safari: no hay beforeinstallprompt, mostramos el botón directo
+        // (solo si estamos en Safari, no en apps embebidas como Instagram/FB
+        // donde "Agregar a inicio" no está disponible igual).
+        if (esIOS) {
+            mostrarBotonInstalar();
+        }
+
+        btnInstalar.addEventListener('click', async () => {
+            if (promptDiferido) {
+                promptDiferido.prompt();
+                const resultado = await promptDiferido.userChoice;
+                promptDiferido = null;
+                if (resultado && resultado.outcome === 'accepted') {
+                    ocultarBotonInstalar();
+                }
+                return;
+            }
+
+            if (esIOS) {
+                abrirModalIOS();
+                return;
+            }
+
+            // Otros navegadores sin soporte de instalación (ej. Firefox
+            // desktop): no hay nada que ofrecer, así que ocultamos el botón.
+            ocultarBotonInstalar();
+        });
+
+        // Se disparó una instalación exitosa (Chrome/Edge/Android)
+        window.addEventListener('appinstalled', () => {
+            promptDiferido = null;
+            ocultarBotonInstalar();
+            cerrarModalIOS();
+        });
+    })();
+
+    // --------------------------------------------------------
+    // 3) SPLASH SCREEN: solo visible cuando la app corre instalada
     //    (display-mode: standalone). Se oculta con fade una vez que
     //    la página terminó de cargar, respetando un tiempo mínimo
     //    para que no "parpadee" en conexiones rápidas.
