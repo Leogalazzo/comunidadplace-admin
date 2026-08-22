@@ -662,6 +662,40 @@
 
                 <div class="max-w-3xl space-y-4 sm:space-y-6">
 
+                    <!-- SUSCRIPCIÓN -->
+                    <div id="tarjeta-suscripcion" class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-slate-200/80 shadow-sm">
+                        <div class="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-6">
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-yellow-400/15 text-yellow-700 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h2 class="font-extrabold text-slate-900 text-sm sm:text-base">Suscripción</h2>
+                                <p class="text-xs text-slate-400">Tu plan mensual en Comunidad Place</p>
+                            </div>
+                        </div>
+
+                        <div id="susc-cargando" class="text-sm text-slate-400">Cargando estado...</div>
+
+                        <div id="susc-contenido" class="hidden space-y-4">
+                            <div class="flex items-center justify-between gap-3 flex-wrap">
+                                <div>
+                                    <p id="susc-estado-label" class="font-bold text-sm text-slate-900"></p>
+                                    <p id="susc-vencimiento" class="text-xs text-slate-400 mt-1"></p>
+                                </div>
+                                <span id="susc-badge" class="px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide"></span>
+                            </div>
+
+                            <button
+                                id="susc-btn-pagar"
+                                type="button"
+                                onclick="iniciarPagoSuscripcion()"
+                                class="hidden w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-yellow-400 text-black px-5 py-3 rounded-xl font-bold text-sm uppercase tracking-wide hover:bg-obsidian hover:text-white transition-all active:scale-95"
+                            >
+                                Pagar suscripción
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- IDENTIDAD DE MARCA -->
                     <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-slate-200/80 shadow-sm">
                         <div class="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-6">
