@@ -103,8 +103,13 @@ function renderEmprendedores() {
 
     let data = emprendedoresCache;
 
-    if (filtroEstadoActual === 'activo') data = data.filter(e => e.activo);
-    if (filtroEstadoActual === 'bloqueado') data = data.filter(e => !e.activo);
+    // "Bloqueado" ahora incluye dos motivos distintos (ver calcularEstadoAcceso
+    // en supabase-client.js): bloqueo manual del admin, o mes gratis/suscripción
+    // vencida sin pagar. Antes acá solo se miraba `e.activo`, así que una tienda
+    // vencida por falta de pago (que activo sigue en true) no aparecía como
+    // bloqueada ni en el filtro ni en el contador.
+    if (filtroEstadoActual === 'activo') data = data.filter(e => !calcularEstadoAcceso(e).bloqueado);
+    if (filtroEstadoActual === 'bloqueado') data = data.filter(e => calcularEstadoAcceso(e).bloqueado);
 
     if (busquedaActual) {
         data = data.filter(e => {
@@ -115,7 +120,7 @@ function renderEmprendedores() {
         });
     }
 
-    const totalActivos = emprendedoresCache.filter(e => e.activo).length;
+    const totalActivos = emprendedoresCache.filter(e => !calcularEstadoAcceso(e).bloqueado).length;
     contador.textContent = `${total} emprendedor${total === 1 ? '' : 'es'} · ${totalActivos} activo${totalActivos === 1 ? '' : 's'}` +
         (data.length !== total ? ` · ${data.length} coincidencia${data.length === 1 ? '' : 's'}` : '');
 
@@ -134,13 +139,33 @@ function renderEmprendedores() {
         const avatar = e.logo_url
             ? `<img src="${miniaturaCloudinary(e.logo_url, 400)}" alt="${escapeHtml(e.nombre_tienda)}" class="w-full h-full object-cover" loading="lazy" decoding="async">`
             : `<div class="w-full h-full flex items-center justify-center bg-gradient-to-tr from-yellow-400 to-amber-300 text-black font-black text-2xl sm:text-4xl">${escapeHtml(inicial)}</div>`;
+
+        // Estado real de la tienda: activo / bloqueada a mano / vencida por
+        // falta de pago (mes gratis o suscripción sin renovar).
+        const acceso = calcularEstadoAcceso(e);
+        const bloqueadaPorPago = acceso.bloqueado && acceso.motivo === 'pago';
+        const badge = !acceso.bloqueado
+            ? { texto: 'Activo', clase: 'bg-emerald-500/95 text-white' }
+            : acceso.motivo === 'admin'
+                ? { texto: 'Bloqueado', clase: 'bg-red-500/95 text-white' }
+                : { texto: 'Vencida', clase: 'bg-orange-500/95 text-white' };
+
+        // El botón de la card cambia según el motivo: una tienda vencida
+        // por pago se reactiva con "activarConPago" (asigna 30 días), no
+        // con el toggle de bloqueo manual del admin.
+        const accionBoton = bloqueadaPorPago ? `activarConPago('${e.id}')` : `toggleEmprendedor('${e.id}', ${e.activo})`;
+        const textoBoton = bloqueadaPorPago ? 'Activar y asignar mes' : (e.activo ? 'Bloquear' : 'Activar');
+        const claseBoton = bloqueadaPorPago
+            ? 'bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white'
+            : (e.activo ? 'bg-red-50 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white');
+
         return `
         <div class="group bg-white rounded-xl sm:rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-xl hover:shadow-slate-900/5 hover:-translate-y-0.5 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer"
             onclick="abrirModalDetalleEmprendedor('${e.id}')">
             <div class="relative aspect-square bg-slate-100 overflow-hidden">
                 ${avatar}
-                <span class="absolute top-1.5 left-1.5 sm:top-3 sm:left-3 text-[8px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-full ${e.activo ? 'bg-emerald-500/95 text-white' : 'bg-red-500/95 text-white'}">
-                    ${e.activo ? 'Activo' : 'Bloqueado'}
+                <span class="absolute top-1.5 left-1.5 sm:top-3 sm:left-3 text-[8px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-full ${badge.clase}">
+                    ${badge.texto}
                 </span>
             </div>
             <div class="p-2 sm:p-4 flex flex-col gap-0.5 sm:gap-1.5 flex-1">
@@ -148,9 +173,9 @@ function renderEmprendedores() {
                 <h3 class="font-bold sm:font-extrabold text-slate-900 text-xs sm:text-base leading-snug line-clamp-1">${escapeHtml(e.nombre_tienda)}</h3>
                 <p class="text-[10px] sm:text-xs text-slate-500 font-medium truncate">${e.whatsapp ? escapeHtml(e.whatsapp) : 'Sin WhatsApp cargado'}</p>
                 <div class="mt-auto pt-1.5 sm:pt-2">
-                    <button onclick="event.stopPropagation(); toggleEmprendedor('${e.id}', ${e.activo})"
-                        class="w-full h-7 sm:h-auto py-0 sm:py-2.5 rounded-lg sm:rounded-xl font-black text-[8px] sm:text-[10px] uppercase tracking-widest transition-colors ${e.activo ? 'bg-red-50 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white'}">
-                        ${e.activo ? 'Bloquear' : 'Activar'}
+                    <button onclick="event.stopPropagation(); ${accionBoton}"
+                        class="w-full h-7 sm:h-auto py-0 sm:py-2.5 rounded-lg sm:rounded-xl font-black text-[8px] sm:text-[10px] uppercase tracking-widest transition-colors ${claseBoton}">
+                        ${textoBoton}
                     </button>
                 </div>
             </div>
@@ -194,10 +219,20 @@ function abrirModalDetalleEmprendedor(id) {
     document.getElementById('detalle-nombre-tienda').textContent = e.nombre_tienda || 'Sin nombre';
     document.getElementById('detalle-usuario').textContent = `@${e.usuarios ? e.usuarios.usuario : '-'}`;
 
-    // Badge activo/bloqueado
+    // Badge activo/bloqueado/vencida
+    const acceso = calcularEstadoAcceso(e);
+    const bloqueadaPorPago = acceso.bloqueado && acceso.motivo === 'pago';
     const badgeActivo = document.getElementById('detalle-badge-activo');
-    badgeActivo.textContent = e.activo ? 'Activo' : 'Bloqueado';
-    badgeActivo.className = `text-[10px] font-black uppercase px-2.5 py-1 rounded-full whitespace-nowrap ${e.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`;
+    if (!acceso.bloqueado) {
+        badgeActivo.textContent = 'Activo';
+        badgeActivo.className = 'text-[10px] font-black uppercase px-2.5 py-1 rounded-full whitespace-nowrap bg-emerald-100 text-emerald-700';
+    } else if (acceso.motivo === 'admin') {
+        badgeActivo.textContent = 'Bloqueado';
+        badgeActivo.className = 'text-[10px] font-black uppercase px-2.5 py-1 rounded-full whitespace-nowrap bg-red-100 text-red-700';
+    } else {
+        badgeActivo.textContent = 'Vencida';
+        badgeActivo.className = 'text-[10px] font-black uppercase px-2.5 py-1 rounded-full whitespace-nowrap bg-orange-100 text-orange-700';
+    }
 
     // Badge términos y condiciones
     const badgeTerminos = document.getElementById('detalle-badge-terminos');
@@ -212,10 +247,15 @@ function abrirModalDetalleEmprendedor(id) {
         badgeTerminos.className = 'text-[10px] font-black uppercase px-2.5 py-1 rounded-full whitespace-nowrap bg-gray-100 text-gray-500';
     }
 
-    // Motivo de bloqueo
+    // Motivo de bloqueo (admin) o aviso de vencimiento por falta de pago
     const motivoWrap = document.getElementById('detalle-bloqueo-motivo');
     if (!e.activo && e.motivo_bloqueo) {
         motivoWrap.textContent = `Motivo del bloqueo: ${e.motivo_bloqueo}`;
+        motivoWrap.className = 'mt-4 bg-red-50 border border-red-100 text-red-700 text-xs font-semibold rounded-xl p-3.5';
+        motivoWrap.classList.remove('hidden');
+    } else if (bloqueadaPorPago) {
+        motivoWrap.textContent = 'Esta tienda no se muestra públicamente porque terminó el mes gratis o venció la suscripción sin renovarse. Si el pago se acreditó pero el sistema no lo registró, podés activarla y asignarle el mes manualmente con el botón de abajo.';
+        motivoWrap.className = 'mt-4 bg-orange-50 border border-orange-100 text-orange-700 text-xs font-semibold rounded-xl p-3.5';
         motivoWrap.classList.remove('hidden');
     } else {
         motivoWrap.classList.add('hidden');
@@ -255,6 +295,7 @@ function abrirModalDetalleEmprendedor(id) {
     // Suscripción
     const ESTADOS_SUSC_ADMIN = {
         sin_suscripcion: { texto: 'Sin activar', color: 'bg-gray-100 text-gray-500' },
+        prueba_gratis: { texto: 'Prueba gratis', color: 'bg-blue-100 text-blue-700' },
         pending: { texto: 'Autorización pendiente', color: 'bg-amber-100 text-amber-700' },
         authorized: { texto: 'Activa', color: 'bg-emerald-100 text-emerald-700' },
         pago_rechazado: { texto: 'Pago rechazado', color: 'bg-red-100 text-red-700' },
@@ -265,10 +306,12 @@ function abrirModalDetalleEmprendedor(id) {
     const estadoSuscInfo = ESTADOS_SUSC_ADMIN[e.suscripcion_estado] || ESTADOS_SUSC_ADMIN.sin_suscripcion;
 
     document.getElementById('detalle-susc-estado').textContent =
-        e.ultimo_pago_en ? `Último pago: ${formatoFecha(e.ultimo_pago_en)}` : 'Todavía sin pagos registrados';
+        e.suscripcion_estado === 'prueba_gratis'
+            ? 'Cuenta creada con mes de prueba gratis'
+            : (e.ultimo_pago_en ? `Último pago: ${formatoFecha(e.ultimo_pago_en)}` : 'Todavía sin pagos registrados');
 
     document.getElementById('detalle-susc-fechas').textContent = e.fecha_vencimiento_suscripcion
-        ? `Vencimiento: ${formatoFecha(e.fecha_vencimiento_suscripcion)}`
+        ? `${e.suscripcion_estado === 'prueba_gratis' ? 'Prueba gratis hasta' : 'Vencimiento'}: ${formatoFecha(e.fecha_vencimiento_suscripcion)}`
         : '';
 
     const badgeSusc = document.getElementById('detalle-susc-badge');
@@ -286,14 +329,23 @@ function abrirModalDetalleEmprendedor(id) {
 
     document.getElementById('detalle-creado').textContent = e.created_at ? `Cuenta creada el ${formatoFecha(e.created_at)}` : '';
 
-    // Botón bloquear/activar
+    // Botón principal: bloquear/activar (admin) o activar y asignar mes (pago)
     const btnToggle = document.getElementById('detalle-btn-toggle');
-    btnToggle.textContent = e.activo ? 'Bloquear tienda' : 'Activar tienda';
-    btnToggle.className = `w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black uppercase tracking-widest text-xs sm:text-sm transition-all active:scale-95 ${e.activo ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-black text-white hover:bg-yellow-400 hover:text-black'}`;
-    btnToggle.onclick = () => {
-        cerrarModalDetalleEmprendedor();
-        toggleEmprendedor(e.id, e.activo);
-    };
+    if (bloqueadaPorPago) {
+        btnToggle.textContent = 'Activar y asignar mes';
+        btnToggle.className = 'w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black uppercase tracking-widest text-xs sm:text-sm transition-all active:scale-95 bg-amber-500 text-white hover:bg-amber-600';
+        btnToggle.onclick = () => {
+            cerrarModalDetalleEmprendedor();
+            activarConPago(e.id);
+        };
+    } else {
+        btnToggle.textContent = e.activo ? 'Bloquear tienda' : 'Activar tienda';
+        btnToggle.className = `w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-2xl font-black uppercase tracking-widest text-xs sm:text-sm transition-all active:scale-95 ${e.activo ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-black text-white hover:bg-yellow-400 hover:text-black'}`;
+        btnToggle.onclick = () => {
+            cerrarModalDetalleEmprendedor();
+            toggleEmprendedor(e.id, e.activo);
+        };
+    }
 
     document.getElementById('modal-detalle-overlay').classList.add('abierto');
     document.getElementById('modal-detalle').classList.add('abierto');
@@ -304,6 +356,39 @@ function cerrarModalDetalleEmprendedor() {
     document.getElementById('modal-detalle-overlay').classList.remove('abierto');
     document.getElementById('modal-detalle').classList.remove('abierto');
     document.body.classList.remove('overflow-hidden');
+}
+
+// Activa manualmente una tienda que quedó vencida por falta de pago (mes
+// gratis o suscripción sin renovar) cuando en realidad el pago SÍ se
+// acreditó pero el sistema de MercadoPago no lo reflejó a tiempo. Le
+// asigna 30 días de suscripción activa desde hoy, igual que si el cobro
+// automático hubiera funcionado bien.
+//
+// OJO: esto es sólo para el caso "no pagó" resuelto por error del sistema.
+// Cualquier otro motivo de bloqueo (mal uso, contenido indebido, etc.)
+// sigue siendo 100% manual con el botón de Bloquear/Activar de siempre.
+async function activarConPago(id) {
+    const confirmado = await confirmarAccion(
+        'Se va a activar la tienda ahora mismo y se le va a asignar una suscripción válida por 30 días, como si el pago se hubiera acreditado normalmente. Usalo solo si confirmaste que el pago llegó y el sistema no lo procesó.',
+        { titulo: '¿Activar y asignar el mes?', textoConfirmar: 'Activar y asignar mes', peligro: false }
+    );
+    if (!confirmado) return;
+
+    const ahora = new Date();
+    const vencimiento = new Date(ahora.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const { error } = await supabase.from('emprendedores')
+        .update({
+            suscripcion_estado: 'authorized',
+            fecha_vencimiento_suscripcion: vencimiento.toISOString(),
+            ultimo_pago_en: ahora.toISOString(),
+        })
+        .eq('id', id);
+
+    if (error) { mostrarToast('No se pudo activar la suscripción.', 'error'); console.error(error); return; }
+
+    mostrarToast('Tienda activada con suscripción válida por 30 días.', 'success');
+    await cargarEmprendedores();
 }
 
 async function toggleEmprendedor(id, activoActual) {
