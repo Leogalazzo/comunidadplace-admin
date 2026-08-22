@@ -61,26 +61,23 @@ html.pwa-standalone .pwa-splash {
 }
 
 .pwa-splash__logo {
-    width: 4.5rem;
-    height: 4.5rem;
-    background: #facc15;
-    border-radius: 1.25rem;
+    width: 5.5rem;
+    height: 5.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 10px 34px rgba(250, 204, 21, .35);
     animation: pwaSplashPulse 2s ease-in-out infinite;
 }
 
 .pwa-splash__logo svg {
-    width: 2.25rem;
-    height: 2.25rem;
-    color: #000;
+    width: 5.5rem;
+    height: 5.5rem;
+    color: #facc15;
 }
 
 .pwa-splash__logo img {
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
 }
 
