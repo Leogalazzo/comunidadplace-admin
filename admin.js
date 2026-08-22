@@ -252,6 +252,29 @@ function abrirModalDetalleEmprendedor(id) {
         ? medios.map(m => `<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-bold">${escapeHtml(nombreMedioPago(m))}</span>`).join('')
         : `<span class="text-sm text-gray-400">Sin medios de pago cargados</span>`;
 
+    // Suscripción
+    const ESTADOS_SUSC_ADMIN = {
+        sin_suscripcion: { texto: 'Sin activar', color: 'bg-gray-100 text-gray-500' },
+        pending: { texto: 'Autorización pendiente', color: 'bg-amber-100 text-amber-700' },
+        authorized: { texto: 'Activa', color: 'bg-emerald-100 text-emerald-700' },
+        pago_rechazado: { texto: 'Pago rechazado', color: 'bg-red-100 text-red-700' },
+        vencida: { texto: 'Vencida', color: 'bg-red-100 text-red-700' },
+        cancelled: { texto: 'Cancelada', color: 'bg-red-100 text-red-700' },
+        paused: { texto: 'Pausada', color: 'bg-amber-100 text-amber-700' },
+    };
+    const estadoSuscInfo = ESTADOS_SUSC_ADMIN[e.suscripcion_estado] || ESTADOS_SUSC_ADMIN.sin_suscripcion;
+
+    document.getElementById('detalle-susc-estado').textContent =
+        e.ultimo_pago_en ? `Último pago: ${formatoFecha(e.ultimo_pago_en)}` : 'Todavía sin pagos registrados';
+
+    document.getElementById('detalle-susc-fechas').textContent = e.fecha_vencimiento_suscripcion
+        ? `Vencimiento: ${formatoFecha(e.fecha_vencimiento_suscripcion)}`
+        : '';
+
+    const badgeSusc = document.getElementById('detalle-susc-badge');
+    badgeSusc.textContent = estadoSuscInfo.texto;
+    badgeSusc.className = 'px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide ' + estadoSuscInfo.color;
+
     // Anuncio en tienda
     const anuncioWrap = document.getElementById('detalle-anuncio-wrap');
     if (e.anuncio) {
