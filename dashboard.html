@@ -1402,6 +1402,37 @@
         </div>
     </div>
 
+    <!-- SPLASH DE ACCESO BLOQUEADO: tapa toda la pantalla, sin botón de
+         cerrar y sin cerrarse al tocar afuera. La única forma de seguir
+         usando el panel es pagando (o cerrar sesión). -->
+    <div id="splash-bloqueo" class="fixed inset-0 z-[80] hidden flex items-center justify-center p-4 sm:p-6">
+        <div class="absolute inset-0 bg-obsidian/95 backdrop-blur-sm"></div>
+
+        <div class="bg-white w-full max-w-md rounded-3xl relative z-10 shadow-2xl p-7 sm:p-9 text-center animate-fade-in">
+            <div id="splash-icono" class="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-5 bg-red-50 text-red-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 10-8 0v4h8z" />
+                </svg>
+            </div>
+
+            <h2 id="splash-titulo" class="text-xl sm:text-2xl font-extrabold text-slate-900 uppercase tracking-tight mb-2"></h2>
+            <p id="splash-mensaje" class="text-sm text-slate-500 leading-relaxed mb-7"></p>
+
+            <button
+                type="button"
+                id="splash-btn-pagar"
+                onclick="iniciarPagoSuscripcion(this)"
+                class="w-full bg-obsidian text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-yellow-400 hover:text-black transition-all shadow-lg shadow-slate-900/10"
+            >
+                Pagar ahora y reactivar mi tienda
+            </button>
+
+            <button type="button" onclick="cerrarSesion()" class="w-full mt-3 py-2.5 text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors">
+                Cerrar sesión
+            </button>
+        </div>
+    </div>
+
     <script src="supabase-client.js"></script>
     <script src="image-upload.js"></script>
     <script src="dashboard.js"></script>
