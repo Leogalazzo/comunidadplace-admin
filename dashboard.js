@@ -1442,7 +1442,7 @@ async function iniciarPagoSuscripcion() {
         const data = await res.json();
 
         if (!res.ok || !data.init_point) {
-            throw new Error(data.error || 'No se pudo generar el link de pago');
+            throw new Error((data.error || 'No se pudo generar el link de pago') + (data.detalle ? ' — ' + data.detalle : ''));
         }
 
         window.location.href = data.init_point;
