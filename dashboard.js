@@ -8,6 +8,10 @@ let mediosPagoPerfilSeleccion = [];   // ids seleccionados en "Mi Perfil"
 let mediosPagoProductoSeleccion = []; // ids seleccionados en el modal de producto
 let productosCache = [];      // último listado de productos traído de Supabase
 
+// URL del Worker de Cloudflare que maneja las suscripciones con MercadoPago.
+// Reemplazar por la URL real una vez hecho el "wrangler deploy".
+const WORKER_SUSCRIPCIONES_URL = 'https://comunidad-emprendedora-api.kentuckyr2.workers.dev';
+
 // Filtros activos del buscador de "Mis productos"
 let filtroBusquedaProductos = '';
 let filtroEstadoProductos = 'todos';     // 'todos' | 'visibles' | 'ocultos'
@@ -902,6 +906,7 @@ async function cargarPerfilEmprendedor() {
 
     emprendedorActual = data;
     actualizarBannerBloqueo(emprendedorActual);
+    renderEstadoSuscripcion(emprendedorActual);
 
     document.getElementById('p-nombre').value = data.nombre_tienda || '';
     document.getElementById('p-nombre-real').value = data.nombre_real || '';
@@ -1372,4 +1377,79 @@ async function quitarAnuncio() {
 
     document.getElementById('p-anuncio').value = '';
     await guardarAnuncio();
+}
+
+// ============================================================
+// SUSCRIPCIÓN (MercadoPago)
+// ============================================================
+
+// Pinta la tarjeta de "Suscripción" en section-perfil según el
+// estado guardado en la fila de emprendedores.
+function renderEstadoSuscripcion(data) {
+    const cargando = document.getElementById('susc-cargando');
+    const contenido = document.getElementById('susc-contenido');
+    const label = document.getElementById('susc-estado-label');
+    const vencimientoEl = document.getElementById('susc-vencimiento');
+    const badge = document.getElementById('susc-badge');
+    const btnPagar = document.getElementById('susc-btn-pagar');
+
+    if (!cargando) return;
+
+    cargando.classList.add('hidden');
+    contenido.classList.remove('hidden');
+
+    const estado = data.suscripcion_estado || 'sin_suscripcion';
+    const vencimiento = data.fecha_vencimiento_suscripcion
+        ? new Date(data.fecha_vencimiento_suscripcion)
+        : null;
+
+    const ESTADOS = {
+        sin_suscripcion: { texto: 'Todavía no activaste tu suscripción', color: 'bg-slate-100 text-slate-500', badge: 'Sin activar', mostrarBoton: true },
+        pending: { texto: 'Autorización de pago pendiente', color: 'bg-amber-100 text-amber-700', badge: 'Pendiente', mostrarBoton: true },
+        authorized: { texto: 'Suscripción activa', color: 'bg-emerald-100 text-emerald-700', badge: 'Activa', mostrarBoton: false },
+        pago_rechazado: { texto: 'El último cobro fue rechazado', color: 'bg-red-100 text-red-700', badge: 'Pago rechazado', mostrarBoton: true },
+        vencida: { texto: 'Suscripción vencida', color: 'bg-red-100 text-red-700', badge: 'Vencida', mostrarBoton: true },
+        cancelled: { texto: 'Suscripción cancelada', color: 'bg-red-100 text-red-700', badge: 'Cancelada', mostrarBoton: true },
+        paused: { texto: 'Suscripción pausada', color: 'bg-amber-100 text-amber-700', badge: 'Pausada', mostrarBoton: true },
+    };
+
+    const info = ESTADOS[estado] || ESTADOS.sin_suscripcion;
+
+    label.textContent = info.texto;
+    badge.textContent = info.badge;
+    badge.className = 'px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide ' + info.color;
+
+    vencimientoEl.textContent = vencimiento
+        ? (estado === 'authorized' ? 'Próximo cobro: ' : 'Venció el: ') + vencimiento.toLocaleDateString('es-AR')
+        : '';
+
+    btnPagar.classList.toggle('hidden', !info.mostrarBoton);
+}
+
+// Llama al Worker para crear la preapproval y redirige a MercadoPago
+async function iniciarPagoSuscripcion() {
+    const btn = document.getElementById('susc-btn-pagar');
+    const textoOriginal = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Generando link de pago...';
+
+    try {
+        const res = await fetch(`${WORKER_SUSCRIPCIONES_URL}/crear-suscripcion`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ emprendedor_id: perfilActual.id }),
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.init_point) {
+            throw new Error(data.error || 'No se pudo generar el link de pago');
+        }
+
+        window.location.href = data.init_point;
+    } catch (err) {
+        console.error(err);
+        mostrarToast('No pudimos iniciar el pago. Probá de nuevo en un momento.', 'error');
+        btn.disabled = false;
+        btn.textContent = textoOriginal;
+    }
 }
