@@ -1,11 +1,11 @@
 // ============================================================
-// SERVICE WORKER - Comunidad Place (panel de gestión)
+// SERVICE WORKER - Comunidad Emprendedora Tienda Online (panel de gestión)
 // ============================================================
 // IMPORTANTE: subí este número cada vez que hagas un deploy con cambios
 // relevantes. Al cambiar, el Service Worker detecta que es "nuevo",
 // vuelve a precargar todo y le avisa al usuario para que actualice
 // (ver pwa.js, que muestra el aviso "Hay una nueva versión disponible").
-const VERSION = 'v3.24.200';
+const VERSION = 'v1.2.67';
 const CACHE_NAME = `comunidadplace-${VERSION}`;
 
 // Archivos propios de la app (rutas relativas, sin "/", para que funcionen
