@@ -1,7 +1,7 @@
 {
-  "name": "ComunidadPlace",
-  "short_name": "ComunidadPlace",
-  "description": "Panel de gestión para emprendedores y administradores de Comunidad Place.",
+  "name": "Comunidad Emprendedora Tienda Online",
+  "short_name": "Comunidad Online",
+  "description": "Panel de gestión para emprendedores y administradores de Comunidad Emprendedora Tienda Online.",
   "id": "/login.html",
   "start_url": "login.html",
   "scope": "./",
