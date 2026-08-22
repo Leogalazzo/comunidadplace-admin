@@ -1,6 +1,6 @@
 /* ============================================================
    PWA - Splash screen + aviso de actualización
-   Comunidad Place
+   Comunidad Emprendedora Tienda Online
    ============================================================
    El splash SOLO se muestra cuando la app corre "instalada"
    (display-mode: standalone / navigator.standalone en iOS).
@@ -78,6 +78,12 @@ html.pwa-standalone .pwa-splash {
     color: #000;
 }
 
+.pwa-splash__logo img {
+    width: 2.25rem;
+    height: 2.25rem;
+    object-fit: contain;
+}
+
 .pwa-splash__title {
     text-align: center;
     font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
@@ -85,18 +91,31 @@ html.pwa-standalone .pwa-splash {
 }
 
 .pwa-splash__brand {
-    display: block;
+    display: inline-block;
     font-size: .65rem;
     font-weight: 800;
     letter-spacing: .3em;
     text-transform: uppercase;
-    color: #facc15;
+    color: #000;
+    background: #facc15;
+    padding: .15rem .5rem;
+    border-radius: .25rem;
 }
 
 .pwa-splash__name {
     display: block;
     margin-top: .3rem;
     font-size: 1.5rem;
+    font-weight: 900;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #fff;
+}
+
+.pwa-splash__sub {
+    display: block;
+    margin-top: -.1rem;
+    font-size: .95rem;
     font-weight: 900;
     letter-spacing: .04em;
     text-transform: uppercase;
