@@ -60,38 +60,42 @@ function iniciarRealtimeDashboard() {
         emprendedorActual = payload.new;
         actualizarBannerBloqueo(emprendedorActual);
         renderEstadoSuscripcion(emprendedorActual);
-        evaluarAccesoYMostrarSplash(emprendedorActual);
+        evaluarAccesoYAvisar(emprendedorActual);
     }, `id=eq.${perfilActual.id}`);
 
     // Además del chequeo en tiempo real (que depende de que algo cambie
     // en la fila), revisamos el vencimiento cada 5 minutos por si el
     // panel queda abierto en una pestaña y el plazo se cumple mientras
     // tanto (sin que nadie lo edite desde el admin).
-    setInterval(() => evaluarAccesoYMostrarSplash(emprendedorActual), 5 * 60 * 1000);
+    setInterval(() => evaluarAccesoYAvisar(emprendedorActual), 5 * 60 * 1000);
 }
 
 // ============================================================
-// SPLASH DE ACCESO BLOQUEADO (mes gratis vencido / cuenta bloqueada)
+// AVISO DE SUSCRIPCIÓN VENCIDA / CUENTA BLOQUEADA
 // ============================================================
-// Muestra un splash de pantalla completa sin botón de cerrar: la única
-// forma de salir es pagar la suscripción o cerrar sesión. Se apoya en
-// calcularEstadoAcceso() (supabase-client.js) para decidir si corresponde.
-function evaluarAccesoYMostrarSplash(emprendedor) {
+// El bloqueo real pasa por otro lado: cuando la suscripción vence, la
+// cuenta se marca como inactiva y la tienda deja de mostrarse en la
+// comunidad (eso ya lo refleja el banner #banner-tienda-bloqueada, que
+// sigue funcionando igual que antes). Este modal es sólo un aviso: se
+// muestra una vez al ingresar para que el emprendedor se entere de que
+// tiene que pagar de nuevo, pero no le impide seguir usando el panel.
+let avisoVencimientoMostrado = false;
+
+function evaluarAccesoYAvisar(emprendedor) {
     const info = calcularEstadoAcceso(emprendedor);
-    if (info.bloqueado) {
-        mostrarSplashBloqueo(info);
-    } else {
-        ocultarSplashBloqueo();
+    if (info.bloqueado && !avisoVencimientoMostrado) {
+        mostrarModalVencimiento(info);
+        avisoVencimientoMostrado = true;
     }
 }
 
-function mostrarSplashBloqueo(info) {
-    const splash = document.getElementById('splash-bloqueo');
-    if (!splash) return;
+function mostrarModalVencimiento(info) {
+    const modal = document.getElementById('modal-vencimiento');
+    if (!modal) return;
 
-    const titulo = document.getElementById('splash-titulo');
-    const mensaje = document.getElementById('splash-mensaje');
-    const btnPagar = document.getElementById('splash-btn-pagar');
+    const titulo = document.getElementById('modal-vencimiento-titulo');
+    const mensaje = document.getElementById('modal-vencimiento-mensaje');
+    const btnPagar = document.getElementById('modal-vencimiento-btn-pagar');
 
     if (info.motivo === 'admin') {
         titulo.textContent = 'Tu tienda está bloqueada';
@@ -101,18 +105,18 @@ function mostrarSplashBloqueo(info) {
         btnPagar.classList.add('hidden');
     } else {
         titulo.textContent = 'Tu mes gratis terminó';
-        mensaje.textContent = 'Para seguir usando tu panel y mantener tu tienda visible, activá tu suscripción mensual.';
+        mensaje.textContent = 'Tu tienda dejó de mostrarse en la comunidad. Para reactivarla, activá tu suscripción mensual.';
         btnPagar.classList.remove('hidden');
     }
 
-    splash.classList.remove('hidden');
+    modal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
 }
 
-function ocultarSplashBloqueo() {
-    const splash = document.getElementById('splash-bloqueo');
-    if (!splash) return;
-    splash.classList.add('hidden');
+function cerrarModalVencimiento() {
+    const modal = document.getElementById('modal-vencimiento');
+    if (!modal) return;
+    modal.classList.add('hidden');
     // Sólo liberamos el scroll si no hay otro modal (términos) pidiéndolo.
     const modalTerminos = document.getElementById('modal-terminos');
     if (!modalTerminos || modalTerminos.classList.contains('hidden')) {
@@ -247,6 +251,71 @@ function obtenerProductosFiltrados() {
 }
 
 
+// ============================================================
+// TRANSFERENCIA BANCARIA / INFORMAR PAGO
+// ============================================================
+
+// Copia CBU/alias al portapapeles. Usa la Clipboard API cuando está
+// disponible (contexto https) y cae a execCommand como respaldo para
+// navegadores o contextos que no la soportan. Da feedback visual en el
+// propio botón además del toast, para que quede claro en mobile.
+async function copiarTexto(texto, boton) {
+    let copiado = false;
+
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(texto);
+            copiado = true;
+        }
+    } catch (err) {
+        console.error(err);
+    }
+
+    if (!copiado) {
+        try {
+            const textarea = document.createElement('textarea');
+            textarea.value = texto;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            copiado = true;
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    if (!copiado) {
+        mostrarToast('No se pudo copiar. Copialo manualmente.', 'error');
+        return;
+    }
+
+    mostrarToast('Copiado al portapapeles', 'success');
+
+    if (boton) {
+        const htmlOriginal = boton.innerHTML;
+        boton.innerHTML = '¡Copiado!';
+        boton.disabled = true;
+        setTimeout(() => {
+            boton.innerHTML = htmlOriginal;
+            boton.disabled = false;
+        }, 1500);
+    }
+}
+
+// Abre WhatsApp con un mensaje pre-armado para informar el pago por
+// transferencia. Incluye el usuario del emprendedor para identificar
+// rápido qué cuenta hay que activar desde el admin al recibir el
+// comprobante (que la persona adjunta a mano en el chat de WhatsApp).
+function informarPagoWhatsapp() {
+    const usuario = perfilActual ? perfilActual.usuario : '';
+    const texto = `Hola! Quiero informar el pago de mi suscripción por transferencia.\n\nUsuario: @${usuario}\n\nTe mando el comprobante 👇`;
+    const url = `https://wa.me/549XXXXXXXXXX?text=${encodeURIComponent(texto)}`;
+    window.open(url, '_blank', 'noopener');
+}
+
 const NAV_BASE = "w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 group";
 const NAV_ACTIVO = `${NAV_BASE} bg-yellow-400 text-black font-bold shadow-md shadow-yellow-400/10`;
 const NAV_INACTIVO = `${NAV_BASE} text-slate-400 hover:text-white hover:bg-white/5`;
@@ -255,6 +324,7 @@ function mostrarSeccion(seccionId) {
     const secciones = {
         productos: document.getElementById('section-productos'),
         perfil: document.getElementById('section-perfil'),
+        soporte: document.getElementById('section-soporte'),
         anuncios: document.getElementById('section-anuncios'),
         qr: document.getElementById('section-qr'),
         credencial: document.getElementById('section-credencial'),
@@ -262,6 +332,7 @@ function mostrarSeccion(seccionId) {
     const navs = {
         productos: document.getElementById('nav-productos'),
         perfil: document.getElementById('nav-perfil'),
+        soporte: document.getElementById('nav-soporte'),
         anuncios: document.getElementById('nav-anuncios'),
         qr: document.getElementById('nav-qr'),
         credencial: document.getElementById('nav-credencial'),
@@ -320,7 +391,7 @@ function pintarGridProductos() {
             <div class="col-span-full flex flex-col items-center justify-center gap-3 py-24 text-center">
                 <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl">🛍️</div>
                 <p class="text-slate-500 font-bold">Todavía no subiste productos.</p>
-                <p class="text-slate-400 text-sm">Empezá creando tu primer producto para mostrarlo en Comunidad Place y en tu perfil.</p>
+                <p class="text-slate-400 text-sm">Empezá creando tu primer producto para mostrarlo en Comunidad Online y en tu perfil.</p>
                 <button onclick="abrirFormulario()" class="mt-2 inline-flex items-center gap-2 bg-obsidian text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-yellow-400 hover:text-black transition-all">
                     + Nuevo Producto
                 </button>
@@ -965,7 +1036,7 @@ async function cargarPerfilEmprendedor() {
     emprendedorActual = data;
     actualizarBannerBloqueo(emprendedorActual);
     renderEstadoSuscripcion(emprendedorActual);
-    evaluarAccesoYMostrarSplash(emprendedorActual);
+    evaluarAccesoYAvisar(emprendedorActual);
 
     document.getElementById('p-nombre').value = data.nombre_tienda || '';
     document.getElementById('p-nombre-real').value = data.nombre_real || '';
@@ -1102,7 +1173,7 @@ function construirCredencialOffscreen(qrDataUrl) {
     wrapper.style.top = '0';
     wrapper.innerHTML = `
         <div style="width:300px; border-radius:24px; padding:32px 24px 28px 24px; display:flex; flex-direction:column; align-items:center; text-align:center; background: radial-gradient(circle at 88% 4%, rgba(250,204,21,0.14), transparent 45%), #0b0c10; font-family:'Plus Jakarta Sans', sans-serif;">
-            <span style="font-size:10px; font-weight:700; letter-spacing:0.25em; color:rgba(255,255,255,0.4); text-transform:uppercase; white-space:nowrap;">Comunidad Place</span>
+            <span style="font-size:10px; font-weight:700; letter-spacing:0.25em; color:rgba(255,255,255,0.4); text-transform:uppercase; white-space:nowrap;">Comunidad Online</span>
             <span style="font-size:10px; font-weight:700; letter-spacing:0.2em; color:#facc15; text-transform:uppercase; margin-top:4px; white-space:nowrap;">Credencial Digital</span>
             <p style="font-size:18px; font-weight:800; line-height:1.375; color:#ffffff; margin:12px 8px 20px 8px;">${nombreEscapado}</p>
             <div style="padding:12px; border-radius:16px; background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)); border:1px solid rgba(250,204,21,0.25);">
@@ -1442,7 +1513,7 @@ async function quitarAnuncio() {
 // SUSCRIPCIÓN (MercadoPago)
 // ============================================================
 
-// Pinta la tarjeta de "Suscripción" en section-perfil según el
+// Pinta la tarjeta de "Suscripción" en section-soporte según el
 // estado guardado en la fila de emprendedores.
 function renderEstadoSuscripcion(data) {
     const cargando = document.getElementById('susc-cargando');
