@@ -59,7 +59,65 @@ function iniciarRealtimeDashboard() {
     suscribirTabla('emprendedores', (payload) => {
         emprendedorActual = payload.new;
         actualizarBannerBloqueo(emprendedorActual);
+        renderEstadoSuscripcion(emprendedorActual);
+        evaluarAccesoYMostrarSplash(emprendedorActual);
     }, `id=eq.${perfilActual.id}`);
+
+    // Además del chequeo en tiempo real (que depende de que algo cambie
+    // en la fila), revisamos el vencimiento cada 5 minutos por si el
+    // panel queda abierto en una pestaña y el plazo se cumple mientras
+    // tanto (sin que nadie lo edite desde el admin).
+    setInterval(() => evaluarAccesoYMostrarSplash(emprendedorActual), 5 * 60 * 1000);
+}
+
+// ============================================================
+// SPLASH DE ACCESO BLOQUEADO (mes gratis vencido / cuenta bloqueada)
+// ============================================================
+// Muestra un splash de pantalla completa sin botón de cerrar: la única
+// forma de salir es pagar la suscripción o cerrar sesión. Se apoya en
+// calcularEstadoAcceso() (supabase-client.js) para decidir si corresponde.
+function evaluarAccesoYMostrarSplash(emprendedor) {
+    const info = calcularEstadoAcceso(emprendedor);
+    if (info.bloqueado) {
+        mostrarSplashBloqueo(info);
+    } else {
+        ocultarSplashBloqueo();
+    }
+}
+
+function mostrarSplashBloqueo(info) {
+    const splash = document.getElementById('splash-bloqueo');
+    if (!splash) return;
+
+    const titulo = document.getElementById('splash-titulo');
+    const mensaje = document.getElementById('splash-mensaje');
+    const btnPagar = document.getElementById('splash-btn-pagar');
+
+    if (info.motivo === 'admin') {
+        titulo.textContent = 'Tu tienda está bloqueada';
+        mensaje.textContent = info.mensaje;
+        // El bloqueo manual del admin no siempre es por falta de pago,
+        // así que no mostramos el botón de pagar en ese caso.
+        btnPagar.classList.add('hidden');
+    } else {
+        titulo.textContent = 'Tu mes gratis terminó';
+        mensaje.textContent = 'Para seguir usando tu panel y mantener tu tienda visible, activá tu suscripción mensual.';
+        btnPagar.classList.remove('hidden');
+    }
+
+    splash.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+}
+
+function ocultarSplashBloqueo() {
+    const splash = document.getElementById('splash-bloqueo');
+    if (!splash) return;
+    splash.classList.add('hidden');
+    // Sólo liberamos el scroll si no hay otro modal (términos) pidiéndolo.
+    const modalTerminos = document.getElementById('modal-terminos');
+    if (!modalTerminos || modalTerminos.classList.contains('hidden')) {
+        document.body.classList.remove('overflow-hidden');
+    }
 }
 
 // ============================================================
@@ -907,6 +965,7 @@ async function cargarPerfilEmprendedor() {
     emprendedorActual = data;
     actualizarBannerBloqueo(emprendedorActual);
     renderEstadoSuscripcion(emprendedorActual);
+    evaluarAccesoYMostrarSplash(emprendedorActual);
 
     document.getElementById('p-nombre').value = data.nombre_tienda || '';
     document.getElementById('p-nombre-real').value = data.nombre_real || '';
@@ -1403,8 +1462,19 @@ function renderEstadoSuscripcion(data) {
         ? new Date(data.fecha_vencimiento_suscripcion)
         : null;
 
+    // Días que quedan de prueba gratis (0 si ya venció o no aplica)
+    const diasRestantesPrueba = (estado === 'prueba_gratis' && vencimiento)
+        ? Math.max(0, Math.ceil((vencimiento.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+        : 0;
+
     const ESTADOS = {
         sin_suscripcion: { texto: 'Todavía no activaste tu suscripción', color: 'bg-slate-100 text-slate-500', badge: 'Sin activar', mostrarBoton: true },
+        prueba_gratis: {
+            texto: diasRestantesPrueba > 0
+                ? `Estás en tu mes de prueba gratis · te ${diasRestantesPrueba === 1 ? 'queda 1 día' : `quedan ${diasRestantesPrueba} días`}`
+                : 'Tu mes de prueba gratis ya terminó',
+            color: 'bg-blue-100 text-blue-700', badge: 'Prueba gratis', mostrarBoton: true,
+        },
         pending: { texto: 'Autorización de pago pendiente', color: 'bg-amber-100 text-amber-700', badge: 'Pendiente', mostrarBoton: true },
         authorized: { texto: 'Suscripción activa', color: 'bg-emerald-100 text-emerald-700', badge: 'Activa', mostrarBoton: false },
         pago_rechazado: { texto: 'El último cobro fue rechazado', color: 'bg-red-100 text-red-700', badge: 'Pago rechazado', mostrarBoton: true },
@@ -1420,15 +1490,17 @@ function renderEstadoSuscripcion(data) {
     badge.className = 'px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide ' + info.color;
 
     vencimientoEl.textContent = vencimiento
-        ? (estado === 'authorized' ? 'Próximo cobro: ' : 'Venció el: ') + vencimiento.toLocaleDateString('es-AR')
+        ? (estado === 'authorized' ? 'Próximo cobro: '
+            : estado === 'prueba_gratis' ? 'Prueba gratis hasta: '
+            : 'Venció el: ') + vencimiento.toLocaleDateString('es-AR')
         : '';
 
     btnPagar.classList.toggle('hidden', !info.mostrarBoton);
 }
 
 // Llama al Worker para crear la preapproval y redirige a MercadoPago
-async function iniciarPagoSuscripcion() {
-    const btn = document.getElementById('susc-btn-pagar');
+async function iniciarPagoSuscripcion(btnElegido) {
+    const btn = btnElegido || document.getElementById('susc-btn-pagar');
     const textoOriginal = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Generando link de pago...';
@@ -1442,10 +1514,7 @@ async function iniciarPagoSuscripcion() {
         const data = await res.json();
 
         if (!res.ok || !data.init_point) {
-            const detalleTexto = data.detalle
-                ? (typeof data.detalle === 'string' ? data.detalle : JSON.stringify(data.detalle))
-                : '';
-            throw new Error((data.error || 'No se pudo generar el link de pago') + (detalleTexto ? ' — ' + detalleTexto : ''));
+            throw new Error((data.error || 'No se pudo generar el link de pago') + (data.detalle ? ' — ' + data.detalle : ''));
         }
 
         window.location.href = data.init_point;
