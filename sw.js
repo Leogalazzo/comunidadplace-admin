@@ -5,7 +5,7 @@
 // relevantes. Al cambiar, el Service Worker detecta que es "nuevo",
 // vuelve a precargar todo y le avisa al usuario para que actualice
 // (ver pwa.js, que muestra el aviso "Hay una nueva versión disponible").
-const VERSION = 'v67.2.2000';
+const VERSION = 'v67.2444.2000';
 const CACHE_NAME = `comunidadplace-${VERSION}`;
 
 // Archivos propios de la app (rutas relativas, sin "/", para que funcionen
