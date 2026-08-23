@@ -198,15 +198,16 @@ const ICONO_SVG_MANOS =
 const ICONO_SVG_TARJETA =
     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>';
 
+// Ícono genérico de "tres puntos" para la opción Otro
+const ICONO_SVG_OTRO =
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>';
+
 const MEDIOS_PAGO = [
-    { id: 'transferencia', label: 'Transferencia',       icon: ICONO_SVG_MANOS },
-     { id: 'mercadopago',   label: 'Mercado Pago',        icon: ICONO_SVG_TARJETA },
-     { id: 'debito',        label: 'Tarjeta de débito',   icon: ICONO_SVG_TARJETA },
-    { id: 'credito',       label: 'Tarjeta de crédito',  icon: ICONO_SVG_TARJETA },
-    { id: 'efectivo',      label: 'Efectivo',            icon: ICONO_SVG_BILLETES },
-    
-   
-    
+    { id: 'transferencia', label: 'Transferencia',      icon: ICONO_SVG_MANOS },
+    { id: 'debito',        label: 'Tarjeta de débito',  icon: ICONO_SVG_TARJETA },
+    { id: 'credito',       label: 'Tarjeta de crédito', icon: ICONO_SVG_TARJETA },
+    { id: 'efectivo',      label: 'Efectivo',           icon: ICONO_SVG_BILLETES },
+    { id: 'otro',          label: 'Otro',               icon: ICONO_SVG_OTRO },
 ];
 
 function nombreMedioPago(id) {
