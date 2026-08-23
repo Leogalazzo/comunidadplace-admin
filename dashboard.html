@@ -84,7 +84,12 @@
             --mp-radius: 16px;
             --mp-radius-sm: 10px;
 
-            position: fixed; inset: 0; z-index: 50;
+            position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+            /* Alto real ajustado por JS (visualViewport) para que el teclado
+               virtual nunca tape el campo activo. Con fallback a dvh/vh. */
+            height: 100vh;
+            height: 100dvh;
+            height: var(--app-height, 100dvh);
             background: rgba(11, 12, 16, 0.75);
             display: none;
             align-items: center;
@@ -99,6 +104,7 @@
             max-width: 640px;
             max-height: min(88vh, 760px);
             max-height: min(88dvh, 760px);
+            max-height: min(calc(var(--app-height, 100dvh) * 0.88), 760px);
             border-radius: var(--mp-radius);
             display: flex;
             flex-direction: column;
@@ -284,22 +290,24 @@
         #modal-form .variant-remove { width: 30px; height: 30px; border-radius: 8px; border: none; background: transparent; color: var(--mp-text-muted); cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0; }
         #modal-form .variant-remove:hover { background: var(--mp-red-dim); color: var(--mp-red); }
 
-        /* Botón "Con stock / Sin stock" por variante: un pill grande y con
-           texto siempre visible (antes era un switch mini que en mobile
-           perdía el texto y quedaba difícil de entender/tocar). Toda la
-           superficie del botón es clickeable, no solo una perilla chica. */
-        #modal-form .variant-stock-pill {
+        /* "Con stock / Sin stock" por variante: dos botones separados y
+           siempre visibles — se toca directamente el que corresponde,
+           sin interruptores ni estados que haya que interpretar. El
+           botón activo queda resaltado en color. */
+        #modal-form .variant-stock-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+        #modal-form .variant-stock-btn {
             display: flex; align-items: center; justify-content: center; gap: 0.35rem;
-            width: 100%; padding: 0.55rem 0.5rem; border-radius: 8px; border: 1.5px solid transparent;
+            padding: 0.55rem 0.4rem; border-radius: 8px; border: 1.5px solid var(--mp-border);
+            background: var(--mp-surface-2); color: var(--mp-text-muted);
             font-size: 0.64rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em;
             cursor: pointer; transition: all .15s; white-space: nowrap;
         }
-        #modal-form .variant-stock-pill-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-        #modal-form .variant-stock-pill.on { background: rgba(22,163,74,0.1); color: #16a34a; border-color: rgba(22,163,74,0.25); }
-        #modal-form .variant-stock-pill.on .variant-stock-pill-dot { background: #16a34a; }
-        #modal-form .variant-stock-pill.off { background: var(--mp-red-dim); color: var(--mp-red); border-color: rgba(220,38,38,0.25); }
-        #modal-form .variant-stock-pill.off .variant-stock-pill-dot { background: var(--mp-red); }
-        #modal-form .variant-stock-pill:active { transform: scale(0.97); }
+        #modal-form .variant-stock-btn-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.4; flex-shrink: 0; }
+        #modal-form .variant-stock-btn.activo-on { background: rgba(22,163,74,0.1); color: #16a34a; border-color: rgba(22,163,74,0.35); }
+        #modal-form .variant-stock-btn.activo-on .variant-stock-btn-dot { opacity: 1; }
+        #modal-form .variant-stock-btn.activo-off { background: var(--mp-red-dim); color: var(--mp-red); border-color: rgba(220,38,38,0.35); }
+        #modal-form .variant-stock-btn.activo-off .variant-stock-btn-dot { opacity: 1; }
+        #modal-form .variant-stock-btn:active { transform: scale(0.96); }
 
         #modal-form .empty-variants { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; border: 1.5px dashed var(--mp-border-light); border-radius: var(--mp-radius-sm); padding: 0.75rem 0.9rem; }
         #modal-form .empty-variants p { font-size: 0.75rem; color: var(--mp-text-muted); }
@@ -402,7 +410,7 @@
             #modal-form .variant-cell-remove { grid-area: remove; justify-self: end; align-self: center; }
             #modal-form .variant-row input { padding: 0.45rem 0.55rem; font-size: 16px; border-radius: 7px; }
             #modal-form .variant-remove { width: 34px; height: 34px; }
-            #modal-form .variant-stock-pill { padding: 0.5rem 0.4rem; font-size: 0.62rem; }
+            #modal-form .variant-stock-btn { padding: 0.5rem 0.3rem; font-size: 0.6rem; gap: 0.25rem; }
             #modal-form .variant-total-hint { font-size: 0.58rem; }
             #modal-form .empty-variants { padding: 0.45rem 0.6rem; }
             #modal-form .empty-variants p { font-size: 0.65rem; }
@@ -873,7 +881,7 @@
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
                                     Instagram
                                 </label>
-                                <input type="url" id="p-instagram" placeholder="https://instagram.com/tu_usuario" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 text-slate-900 font-semibold text-sm focus:bg-white focus:border-obsidian focus:ring-4 focus:ring-yellow-400/20 outline-none transition-all">
+                                <input type="text" id="p-instagram" autocomplete="off" placeholder="tu_usuario" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 text-slate-900 font-semibold text-sm focus:bg-white focus:border-obsidian focus:ring-4 focus:ring-yellow-400/20 outline-none transition-all">
                             </div>
                             <div>
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
@@ -885,7 +893,7 @@
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
                                     TikTok
                                 </label>
-                                <input type="url" id="p-tiktok" placeholder="https://tiktok.com/@tu_usuario" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 text-slate-900 font-semibold text-sm focus:bg-white focus:border-obsidian focus:ring-4 focus:ring-yellow-400/20 outline-none transition-all">
+                                <input type="text" id="p-tiktok" autocomplete="off" placeholder="tu_usuario" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 text-slate-900 font-semibold text-sm focus:bg-white focus:border-obsidian focus:ring-4 focus:ring-yellow-400/20 outline-none transition-all">
                             </div>
                         </div>
                     </div>
@@ -1412,16 +1420,16 @@
 
             <div class="px-6 sm:px-8 py-4 overflow-y-auto text-sm text-slate-600 leading-relaxed space-y-4">
                 <div>
-                    <p class="font-bold text-slate-800">Términos y Condiciones de Uso — Comunidad Place</p>
+                    <p class="font-bold text-slate-800">Términos y Condiciones de Uso — Comunidad Emprendedora Tienda Online</p>
                     <p class="text-xs text-slate-400 mt-0.5">Última actualización: 31 de agosto de 2026</p>
                 </div>
                 <p>
-                    Bienvenido/a a Comunidad Place, una plataforma destinada a brindar visibilidad y facilitar la conexión entre emprendedores, comercios y potenciales clientes. El acceso y uso de Comunidad Place implica la aceptación de los presentes Términos y Condiciones. Si el usuario no está de acuerdo con alguno de ellos, deberá abstenerse de utilizar la plataforma.
+                    Bienvenido/a a Comunidad Emprendedora Tienda Online, una plataforma destinada a brindar visibilidad y facilitar la conexión entre emprendedores, comercios y potenciales clientes. El acceso y uso de Comunidad Emprendedora Tienda Online implica la aceptación de los presentes Términos y Condiciones. Si el usuario no está de acuerdo con alguno de ellos, deberá abstenerse de utilizar la plataforma.
                 </p>
                 <div>
                     <p class="font-bold text-slate-800 mb-1">1. Uso de la plataforma</p>
                     <p>
-                        Comunidad Place tiene como finalidad permitir que los emprendedores puedan mostrar sus productos, servicios y emprendimientos dentro de la plataforma. El usuario se compromete a utilizar la plataforma de manera responsable, respetuosa y conforme a la legislación vigente, estos Términos y Condiciones y las indicaciones proporcionadas por Comunidad Place. Queda prohibido utilizar la plataforma para actividades ilícitas, fraudulentas, engañosas, maliciosas o que puedan perjudicar a otros usuarios, clientes o a la propia plataforma.
+                        Comunidad Emprendedora Tienda Online tiene como finalidad permitir que los emprendedores puedan mostrar sus productos, servicios y emprendimientos dentro de la plataforma. El usuario se compromete a utilizar la plataforma de manera responsable, respetuosa y conforme a la legislación vigente, estos Términos y Condiciones y las indicaciones proporcionadas por Comunidad Emprendedora Tienda Online. Queda prohibido utilizar la plataforma para actividades ilícitas, fraudulentas, engañosas, maliciosas o que puedan perjudicar a otros usuarios, clientes o a la propia plataforma.
                     </p>
                 </div>
                 <div>
@@ -1433,7 +1441,7 @@
                 <div>
                     <p class="font-bold text-slate-800 mb-1">3. Información de los productos</p>
                     <p>
-                        El usuario es responsable de que la información proporcionada en sus publicaciones sea verdadera, clara y actualizada. Esto incluye, entre otros: nombre y descripción del producto, imágenes utilizadas, precio informado, disponibilidad, características del producto, información de contacto, condiciones de venta o entrega. Comunidad Place podrá solicitar la modificación, corrección o eliminación de publicaciones que contengan información falsa, engañosa, incompleta o desactualizada.
+                        El usuario es responsable de que la información proporcionada en sus publicaciones sea verdadera, clara y actualizada. Esto incluye, entre otros: nombre y descripción del producto, imágenes utilizadas, precio informado, disponibilidad, características del producto, información de contacto, condiciones de venta o entrega. Comunidad Emprendedora Tienda Online podrá solicitar la modificación, corrección o eliminación de publicaciones que contengan información falsa, engañosa, incompleta o desactualizada.
                     </p>
                 </div>
                 <div>
@@ -1445,13 +1453,13 @@
                 <div>
                     <p class="font-bold text-slate-800 mb-1">5. Responsabilidad sobre las ventas</p>
                     <p>
-                        Comunidad Place funciona como una plataforma de exposición y conexión entre emprendedores y potenciales clientes. La plataforma no participa necesariamente en las operaciones comerciales realizadas entre el vendedor y el comprador. Por lo tanto, Comunidad Place no será responsable por: incumplimientos entre compradores y vendedores, productos defectuosos o diferentes a los ofrecidos, retrasos en entregas, cancelaciones de pedidos, falta de pago, reclamos comerciales, garantías de productos, daños ocasionados por los productos comercializados, ni acuerdos realizados fuera de la plataforma. La responsabilidad derivada de la venta de un producto corresponderá al vendedor que lo haya publicado y comercializado.
+                        Comunidad Emprendedora Tienda Online funciona como una plataforma de exposición y conexión entre emprendedores y potenciales clientes. La plataforma no participa necesariamente en las operaciones comerciales realizadas entre el vendedor y el comprador. Por lo tanto, Comunidad Emprendedora Tienda Online no será responsable por: incumplimientos entre compradores y vendedores, productos defectuosos o diferentes a los ofrecidos, retrasos en entregas, cancelaciones de pedidos, falta de pago, reclamos comerciales, garantías de productos, daños ocasionados por los productos comercializados, ni acuerdos realizados fuera de la plataforma. La responsabilidad derivada de la venta de un producto corresponderá al vendedor que lo haya publicado y comercializado.
                     </p>
                 </div>
                 <div>
                     <p class="font-bold text-slate-800 mb-1">6. Seguridad de la cuenta</p>
                     <p>
-                        Cada usuario es responsable de mantener la confidencialidad y seguridad de sus credenciales de acceso. El usuario deberá informar a Comunidad Place ante cualquier sospecha de acceso no autorizado a su cuenta. Comunidad Place no se responsabiliza por la pérdida, robo, filtración o utilización indebida de las credenciales del usuario cuando dicha situación sea consecuencia de acciones u omisiones del propio usuario o de terceros ajenos a Comunidad Place. Asimismo, Comunidad Place no será responsable por modificaciones, publicaciones, eliminación de productos u otras acciones realizadas por terceros que hayan obtenido acceso a una cuenta de usuario.
+                        Cada usuario es responsable de mantener la confidencialidad y seguridad de sus credenciales de acceso. El usuario deberá informar a Comunidad Emprendedora Tienda Online ante cualquier sospecha de acceso no autorizado a su cuenta. Comunidad Emprendedora Tienda Online no se responsabiliza por la pérdida, robo, filtración o utilización indebida de las credenciales del usuario cuando dicha situación sea consecuencia de acciones u omisiones del propio usuario o de terceros ajenos a Comunidad Emprendedora Tienda Online. Asimismo, Comunidad Emprendedora Tienda Online no será responsable por modificaciones, publicaciones, eliminación de productos u otras acciones realizadas por terceros que hayan obtenido acceso a una cuenta de usuario.
                     </p>
                 </div>
                 <div>
@@ -1463,83 +1471,83 @@
                 <div>
                     <p class="font-bold text-slate-800 mb-1">8. Conductas prohibidas</p>
                     <p>
-                        No está permitido utilizar Comunidad Place para publicar, promocionar o comercializar: productos o servicios ilegales, productos falsificados o de procedencia ilícita, contenido engañoso o fraudulento, contenido que infrinja derechos de terceros, publicaciones destinadas a estafar o perjudicar a otros usuarios, contenido ofensivo, discriminatorio, amenazante o destinado a acosar a otras personas, ni productos cuya comercialización esté prohibida por la legislación vigente. Comunidad Place podrá retirar cualquier contenido que considere contrario a estos Términos y Condiciones o que pueda representar un riesgo para la comunidad.
+                        No está permitido utilizar Comunidad Emprendedora Tienda Online para publicar, promocionar o comercializar: productos o servicios ilegales, productos falsificados o de procedencia ilícita, contenido engañoso o fraudulento, contenido que infrinja derechos de terceros, publicaciones destinadas a estafar o perjudicar a otros usuarios, contenido ofensivo, discriminatorio, amenazante o destinado a acosar a otras personas, ni productos cuya comercialización esté prohibida por la legislación vigente. Comunidad Emprendedora Tienda Online podrá retirar cualquier contenido que considere contrario a estos Términos y Condiciones o que pueda representar un riesgo para la comunidad.
                     </p>
                 </div>
                 <div>
                     <p class="font-bold text-slate-800 mb-1">9. Moderación de contenido</p>
                     <p>
-                        Comunidad Place podrá revisar, moderar, ocultar o eliminar publicaciones y contenido que incumplan estos Términos y Condiciones. La plataforma también podrá solicitar al usuario información adicional para verificar la legitimidad de un emprendimiento, producto o publicación. La moderación podrá realizarse de manera preventiva cuando exista una sospecha razonable de incumplimiento.
+                        Comunidad Emprendedora Tienda Online podrá revisar, moderar, ocultar o eliminar publicaciones y contenido que incumplan estos Términos y Condiciones. La plataforma también podrá solicitar al usuario información adicional para verificar la legitimidad de un emprendimiento, producto o publicación. La moderación podrá realizarse de manera preventiva cuando exista una sospecha razonable de incumplimiento.
                     </p>
                 </div>
                 <div>
                     <p class="font-bold text-slate-800 mb-1">10. Suspensión y eliminación de cuentas</p>
                     <p>
-                        Cuando un usuario incumpla las normas de Comunidad Place, su perfil podrá ser bloqueado inicialmente. En primera instancia, Comunidad Place podrá comunicarse con el usuario para informarle sobre el incumplimiento y, cuando corresponda, permitirle realizar las correcciones necesarias. Si el incumplimiento se repite, si la conducta resulta especialmente grave o si el usuario continúa infringiendo las normas, Comunidad Place podrá eliminar definitivamente el perfil del usuario de la plataforma, junto con las publicaciones y productos asociados. La eliminación del perfil implicará la pérdida del acceso a la plataforma. En caso de suspensión o eliminación por incumplimiento de estos Términos y Condiciones, el usuario podrá perder el acceso a los beneficios y servicios asociados a su suscripción, aun cuando hubiera abonado previamente el período correspondiente, sin perjuicio de los derechos que pudieran corresponderle conforme a la legislación aplicable.
+                        Cuando un usuario incumpla las normas de Comunidad Emprendedora Tienda Online, su perfil podrá ser bloqueado inicialmente. En primera instancia, Comunidad Emprendedora Tienda Online podrá comunicarse con el usuario para informarle sobre el incumplimiento y, cuando corresponda, permitirle realizar las correcciones necesarias. Si el incumplimiento se repite, si la conducta resulta especialmente grave o si el usuario continúa infringiendo las normas, Comunidad Emprendedora Tienda Online podrá eliminar definitivamente el perfil del usuario de la plataforma, junto con las publicaciones y productos asociados. La eliminación del perfil implicará la pérdida del acceso a la plataforma. En caso de suspensión o eliminación por incumplimiento de estos Términos y Condiciones, el usuario podrá perder el acceso a los beneficios y servicios asociados a su suscripción, aun cuando hubiera abonado previamente el período correspondiente, sin perjuicio de los derechos que pudieran corresponderle conforme a la legislación aplicable.
                     </p>
                 </div>
                 <div>
                     <p class="font-bold text-slate-800 mb-1">11. Suscripciones y pagos</p>
                     <p>
-                        En caso de que Comunidad Place ofrezca planes de suscripción pagos, el usuario deberá abonar el importe correspondiente al plan seleccionado y respetar las condiciones informadas al momento de contratarlo. El pago de una suscripción no otorga al usuario un derecho absoluto a permanecer en la plataforma si incumple estos Términos y Condiciones. Las condiciones de renovación, vencimiento, cancelación y eventuales reembolsos serán informadas según el plan contratado y la legislación aplicable.
+                        En caso de que Comunidad Emprendedora Tienda Online ofrezca planes de suscripción pagos, el usuario deberá abonar el importe correspondiente al plan seleccionado y respetar las condiciones informadas al momento de contratarlo. El pago de una suscripción no otorga al usuario un derecho absoluto a permanecer en la plataforma si incumple estos Términos y Condiciones. Las condiciones de renovación, vencimiento, cancelación y eventuales reembolsos serán informadas según el plan contratado y la legislación aplicable.
                     </p>
                 </div>
                 <div>
                     <p class="font-bold text-slate-800 mb-1">12. Disponibilidad del servicio</p>
                     <p>
-                        Comunidad Place procurará mantener la plataforma disponible y funcionando correctamente, pero no garantiza que el servicio se encuentre disponible de manera permanente e ininterrumpida. Podrán producirse interrupciones debido a: mantenimiento, actualizaciones, fallas técnicas, problemas de proveedores externos, problemas de conectividad, ataques informáticos, circunstancias de fuerza mayor u otras situaciones ajenas al control razonable de Comunidad Place.
+                        Comunidad Emprendedora Tienda Online procurará mantener la plataforma disponible y funcionando correctamente, pero no garantiza que el servicio se encuentre disponible de manera permanente e ininterrumpida. Podrán producirse interrupciones debido a: mantenimiento, actualizaciones, fallas técnicas, problemas de proveedores externos, problemas de conectividad, ataques informáticos, circunstancias de fuerza mayor u otras situaciones ajenas al control razonable de Comunidad Emprendedora Tienda Online.
                     </p>
                 </div>
                 <div>
                     <p class="font-bold text-slate-800 mb-1">13. Modificaciones de la plataforma</p>
                     <p>
-                        Comunidad Place podrá modificar, actualizar, agregar o eliminar funcionalidades, secciones, características o servicios de la plataforma. Estas modificaciones podrán realizarse con el objetivo de mejorar la experiencia de los usuarios, corregir errores, incorporar nuevas funciones o adaptar la plataforma a nuevas necesidades.
+                        Comunidad Emprendedora Tienda Online podrá modificar, actualizar, agregar o eliminar funcionalidades, secciones, características o servicios de la plataforma. Estas modificaciones podrán realizarse con el objetivo de mejorar la experiencia de los usuarios, corregir errores, incorporar nuevas funciones o adaptar la plataforma a nuevas necesidades.
                     </p>
                 </div>
                 <div>
                     <p class="font-bold text-slate-800 mb-1">14. Modificación de estos Términos</p>
                     <p>
-                        Comunidad Place podrá actualizar estos Términos y Condiciones cuando resulte necesario. Las modificaciones serán publicadas en la plataforma y, cuando corresponda, se indicará la fecha de actualización. El uso continuado de Comunidad Place después de la publicación de modificaciones implicará la aceptación de los nuevos términos, en la medida permitida por la legislación aplicable.
+                        Comunidad Emprendedora Tienda Online podrá actualizar estos Términos y Condiciones cuando resulte necesario. Las modificaciones serán publicadas en la plataforma y, cuando corresponda, se indicará la fecha de actualización. El uso continuado de Comunidad Emprendedora Tienda Online después de la publicación de modificaciones implicará la aceptación de los nuevos términos, en la medida permitida por la legislación aplicable.
                     </p>
                 </div>
                 <div>
                     <p class="font-bold text-slate-800 mb-1">15. Protección de datos personales</p>
                     <p>
-                        Los datos proporcionados por los usuarios serán utilizados para el funcionamiento de la plataforma, la gestión de las cuentas, la prestación de los servicios y las finalidades informadas al momento de recopilar dichos datos. Comunidad Place procurará adoptar medidas razonables para proteger la información de los usuarios. El usuario deberá proporcionar información verdadera y actualizada y será responsable de la información que incorpore a su perfil y publicaciones.
+                        Los datos proporcionados por los usuarios serán utilizados para el funcionamiento de la plataforma, la gestión de las cuentas, la prestación de los servicios y las finalidades informadas al momento de recopilar dichos datos. Comunidad Emprendedora Tienda Online procurará adoptar medidas razonables para proteger la información de los usuarios. El usuario deberá proporcionar información verdadera y actualizada y será responsable de la información que incorpore a su perfil y publicaciones.
                     </p>
                 </div>
                 <div>
                     <p class="font-bold text-slate-800 mb-1">16. Responsabilidad del usuario</p>
                     <p>
-                        El usuario será responsable de todas las acciones realizadas desde su cuenta y del contenido que publique en Comunidad Place, salvo que pueda demostrar que dichas acciones fueron realizadas sin su autorización y que actuó con la diligencia correspondiente para proteger sus credenciales. El usuario se compromete a mantener actualizada la información de su emprendimiento y a responder por las operaciones comerciales que realice con sus clientes.
+                        El usuario será responsable de todas las acciones realizadas desde su cuenta y del contenido que publique en Comunidad Emprendedora Tienda Online, salvo que pueda demostrar que dichas acciones fueron realizadas sin su autorización y que actuó con la diligencia correspondiente para proteger sus credenciales. El usuario se compromete a mantener actualizada la información de su emprendimiento y a responder por las operaciones comerciales que realice con sus clientes.
                     </p>
                 </div>
                 <div>
-                    <p class="font-bold text-slate-800 mb-1">17. Propiedad intelectual de Comunidad Place</p>
+                    <p class="font-bold text-slate-800 mb-1">17. Propiedad intelectual de Comunidad Emprendedora Tienda Online</p>
                     <p>
-                        La estructura, diseño, identidad visual, logotipos, textos, funcionalidades, código, elementos gráficos y demás componentes propios de Comunidad Place pertenecen a sus respectivos titulares y no podrán ser copiados, reproducidos, modificados o utilizados sin autorización cuando corresponda. El contenido publicado por los usuarios continuará perteneciendo a sus respectivos titulares, sin perjuicio de las autorizaciones necesarias para que Comunidad Place pueda mostrarlo y utilizarlo dentro de la plataforma para prestar el servicio.
+                        La estructura, diseño, identidad visual, logotipos, textos, funcionalidades, código, elementos gráficos y demás componentes propios de Comunidad Emprendedora Tienda Online pertenecen a sus respectivos titulares y no podrán ser copiados, reproducidos, modificados o utilizados sin autorización cuando corresponda. El contenido publicado por los usuarios continuará perteneciendo a sus respectivos titulares, sin perjuicio de las autorizaciones necesarias para que Comunidad Emprendedora Tienda Online pueda mostrarlo y utilizarlo dentro de la plataforma para prestar el servicio.
                     </p>
                 </div>
                 <div>
                     <p class="font-bold text-slate-800 mb-1">18. Enlaces y servicios de terceros</p>
                     <p>
-                        La plataforma podrá contener enlaces, servicios o herramientas proporcionados por terceros. Comunidad Place no controla necesariamente dichos servicios y, por lo tanto, no garantiza su disponibilidad, funcionamiento, seguridad o contenido. El uso de servicios de terceros podrá estar sujeto a sus propios términos y condiciones.
+                        La plataforma podrá contener enlaces, servicios o herramientas proporcionados por terceros. Comunidad Emprendedora Tienda Online no controla necesariamente dichos servicios y, por lo tanto, no garantiza su disponibilidad, funcionamiento, seguridad o contenido. El uso de servicios de terceros podrá estar sujeto a sus propios términos y condiciones.
                     </p>
                 </div>
                 <div>
                     <p class="font-bold text-slate-800 mb-1">19. Aceptación</p>
                     <p>
-                        Al registrarse, crear un perfil, publicar productos o utilizar Comunidad Place, el usuario declara haber leído, comprendido y aceptado estos Términos y Condiciones. Si el usuario no acepta estos términos, deberá dejar de utilizar la plataforma y solicitar la baja de su cuenta cuando corresponda.
+                        Al registrarse, crear un perfil, publicar productos o utilizar Comunidad Emprendedora Tienda Online, el usuario declara haber leído, comprendido y aceptado estos Términos y Condiciones. Si el usuario no acepta estos términos, deberá dejar de utilizar la plataforma y solicitar la baja de su cuenta cuando corresponda.
                     </p>
                 </div>
                 <div>
                     <p class="font-bold text-slate-800 mb-1">20. Contacto</p>
                     <p>
-                        Para consultas, reclamos, reportes de publicaciones o cuestiones relacionadas con estos Términos y Condiciones, el usuario podrá comunicarse con Comunidad Place a través de los canales oficiales de contacto disponibles en la plataforma.
+                        Para consultas, reclamos, reportes de publicaciones o cuestiones relacionadas con estos Términos y Condiciones, el usuario podrá comunicarse con Comunidad Emprendedora Tienda Online a través de los canales oficiales de contacto disponibles en la plataforma.
                     </p>
                 </div>
                 <p class="text-xs text-slate-400 italic pt-2 border-t border-slate-100">
-                    Comunidad Place — Una plataforma para conectar emprendimientos con personas y comunidades.
+                    Comunidad Emprendedora Tienda Online — Una plataforma para conectar emprendimientos con personas y comunidades.
                 </p>
             </div>
 
