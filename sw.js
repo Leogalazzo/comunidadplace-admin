@@ -5,15 +5,15 @@
 // relevantes. Al cambiar, el Service Worker detecta que es "nuevo",
 // vuelve a precargar todo y le avisa al usuario para que actualice
 // (ver pwa.js, que muestra el aviso "Hay una nueva versión disponible").
-const VERSION = 'v34.5.67';
+const VERSION = 'v1.3.0';
 const CACHE_NAME = `comunidadplace-${VERSION}`;
 
 // Archivos propios de la app (rutas relativas, sin "/", para que funcionen
 // igual en cualquier subcarpeta o dominio de Vercel).
 const ARCHIVOS_PRECARGA = [
-  'login.html',
-  'admin.html',
-  'dashboard.html',
+  'login',
+  'admin',
+  'dashboard',
   'login.js',
   'admin.js',
   'dashboard.js',
@@ -131,7 +131,7 @@ async function networkFirst(request) {
     if (respuestaCache) return respuestaCache;
     // Último recurso sin conexión: mostramos login.html si es una navegación.
     if (request.mode === 'navigate') {
-      const login = await cache.match('login.html');
+      const login = await cache.match('login');
       if (login) return login;
     }
     throw err;
