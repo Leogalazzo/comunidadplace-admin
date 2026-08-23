@@ -593,8 +593,14 @@
                 display: block; position: absolute; top: 0.55rem; left: 50%; transform: translateX(-50%);
                 width: 36px; height: 4px; border-radius: 99px; background: var(--mps-border-light); z-index: 20;
             }
-            #modal-pago-suscripcion .mps-header { padding: 1.15rem 1.35rem 0; }
-            #modal-pago-suscripcion .mps-body { padding-left: 1.35rem; padding-right: 1.35rem; padding-bottom: 0.85rem; }
+            #modal-pago-suscripcion .mps-header { padding: 1.15rem 1rem 0; }
+            /* Menos padding lateral en mobile: el Card Payment Brick apila
+               vencimiento/CVV en dos filas cuando el ancho disponible cae
+               por debajo de cierto punto interno de MercadoPago. Con
+               px-6/px-7 (24-28px) de cada lado, en celulares angostos
+               (~360-375px) quedaban ~310px para el Brick, justo debajo de
+               ese umbral. Bajando a 1rem (16px) por lado le damos margen. */
+            #modal-pago-suscripcion .mps-body { padding-left: 1rem; padding-right: 1rem; padding-bottom: 0.85rem; }
             #modal-pago-suscripcion .mps-trust {
                 padding: 0.7rem 1.35rem;
                 padding-bottom: max(0.7rem, env(safe-area-inset-bottom));
