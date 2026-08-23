@@ -1770,8 +1770,8 @@ async function enviarPagoSuscripcion(cardFormData) {
         }
 
         if (data.status === 'approved') {
-            mostrarToast('¡Pago acreditado! Tu suscripción ya está activa.', 'exito');
             cerrarModalPagoSuscripcion();
+            abrirModalPagoExitoso();
             await cargarPerfilEmprendedor();
         } else if (data.status === 'in_process' || data.status === 'pending') {
             mostrarToast('Tu pago quedó en revisión. Te avisamos apenas se acredite.', 'info');
@@ -1813,6 +1813,18 @@ function cerrarModalPagoSuscripcion() {
         brickTarjetaControlador.unmount();
         brickTarjetaControlador = null;
     }
+}
+
+// Modal de confirmación tras un pago aprobado. Simple: no depende del
+// visualViewport porque no tiene campos de formulario ni teclado que
+// gestionar, así que no necesita el mismo tratamiento que los otros dos.
+function abrirModalPagoExitoso() {
+    document.getElementById('modal-pago-exitoso').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+}
+function cerrarModalPagoExitoso() {
+    document.getElementById('modal-pago-exitoso').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
 }
 
 // ============================================================
