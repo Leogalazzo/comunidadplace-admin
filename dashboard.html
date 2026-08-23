@@ -973,7 +973,7 @@
                             <button
                                 id="susc-btn-pagar"
                                 type="button"
-                                onclick="iniciarPagoSuscripcion()"
+                                onclick="abrirModalPagoSuscripcion()"
                                 class="hidden w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-yellow-400 text-black px-5 py-3 rounded-xl font-bold text-sm uppercase tracking-wide hover:bg-obsidian hover:text-white transition-all active:scale-95"
                             >
                                 Pagar suscripción
@@ -1595,7 +1595,7 @@
                 <button
                     type="button"
                     id="modal-vencimiento-btn-pagar"
-                    onclick="iniciarPagoSuscripcion(this)"
+                    onclick="cerrarModalVencimiento(); abrirModalPagoSuscripcion()"
                     class="w-full bg-obsidian text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-yellow-400 hover:text-black transition-all duration-200 shadow-lg shadow-slate-900/15 active:scale-95"
                 >
                     Pagar ahora y reactivar mi tienda
@@ -1604,6 +1604,44 @@
         </div>
     </div>
 
+    <!-- MODAL: PAGO DE SUSCRIPCIÓN (Card Payment Brick de MercadoPago)
+         Reemplaza la redirección a mercadopago.com: el formulario de
+         tarjeta se monta acá mismo, dentro del panel. No se abre ni la
+         app ni el navegador de MercadoPago en ningún dispositivo. -->
+    <div id="modal-pago-suscripcion" onclick="if (event.target === this) cerrarModalPagoSuscripcion()" class="fixed inset-0 z-[85] hidden flex items-center justify-center p-4 sm:p-6">
+        <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-md"></div>
+
+        <div class="bg-white w-full max-w-md rounded-[28px] relative z-10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] overflow-hidden animate-fade-in max-h-[90vh] flex flex-col">
+            <div class="h-1.5 w-full bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-400 flex-shrink-0"></div>
+
+            <button type="button" onclick="cerrarModalPagoSuscripcion()" aria-label="Cerrar" class="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center bg-slate-100/80 text-slate-400 hover:text-slate-700 hover:bg-slate-200 active:scale-90 transition-all z-10">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+
+            <div class="p-6 sm:p-7 pt-8 overflow-y-auto">
+                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-600 mb-1">Pago seguro</p>
+                <h2 class="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight mb-1">Pagar suscripción</h2>
+                <p id="modal-pago-monto" class="text-sm text-slate-500 mb-5"></p>
+
+                <div id="modal-pago-cargando" class="py-10 text-center text-sm text-slate-400">
+                    Cargando formulario de pago...
+                </div>
+
+                <!-- Acá monta el SDK de MercadoPago el formulario de tarjeta -->
+                <div id="brick-tarjeta" class="hidden"></div>
+
+                <p class="text-[11px] text-slate-400 mt-4 flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 10-8 0v4h8z"/></svg>
+                    Tus datos de tarjeta los procesa MercadoPago de forma segura, nunca pasan por nuestros servidores.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SDK de MercadoPago para el Card Payment Brick -->
+    <script src="https://sdk.mercadopago.com/js/v2"></script>
     <script src="supabase-client.js"></script>
     <script src="image-upload.js"></script>
     <script src="dashboard.js"></script>
