@@ -1710,30 +1710,19 @@ async function abrirModalPagoSuscripcion() {
             customization: {
                 visual: {
                     style: {
-                        theme: 'flat',
+                        // Sin theme ni customVariables: usamos el diseño "default"
+                        // del Brick tal cual, que ya viene con su propio layout
+                        // responsive (sabe cuándo poner vencimiento/CVV en una
+                        // fila o dos según el ancho disponible, tamaños de fuente
+                        // que no disparan el auto-zoom de iOS, etc). La versión
+                        // anterior forzaba padding y tamaños de fuente que
+                        // rompían ese layout interno (labels que se cortaban en
+                        // dos líneas, campos desalineados). Si más adelante hace
+                        // falta acercar el look al resto del panel, es mejor ir
+                        // agregando UNA variable a la vez desde acá y probando en
+                        // un celular real, en vez de reconstruir todo el set.
                         customVariables: {
                             baseColor: '#0b0c10',
-                            formBackgroundColor: '#ffffff',
-                            buttonTextColor: '#ffffff',
-                            borderRadiusMedium: '10px',
-                            // Achicamos el Brick (viene con bastante aire por defecto):
-                            // menos padding interno, así entra sin scroll en
-                            // pantallas más chicas y no se ve "agrandado" en mobile.
-                            //
-                            // IMPORTANTE: las fuentes NUNCA deben quedar por debajo
-                            // de 16px. Cualquier input con font-size < 16px hace que
-                            // iOS Safari haga zoom automático al enfocarlo, y ese zoom
-                            // es lo que después pelea con nuestro ajuste de altura por
-                            // visualViewport: eso es lo que se siente como "el teclado
-                            // se va para todos lados" / título que desaparece al tocar
-                            // el número de tarjeta. Achicar el Brick tiene que hacerse
-                            // con padding, no con tamaño de fuente por debajo de 16px.
-                            formPadding: '0px',
-                            inputVerticalPadding: '10px',
-                            inputHorizontalPadding: '12px',
-                            fontSizeSmall: '16px',
-                            fontSizeMedium: '16px',
-                            fontSizeLarge: '17px',
                         },
                     },
                 },
