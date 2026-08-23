@@ -603,14 +603,24 @@ function abrirFormulario() {
 // scrollear. Usamos la Visual Viewport API para conocer el alto
 // realmente visible y achicar el modal a ese tamaño en tiempo real;
 // así el campo enfocado siempre queda dentro del área con scroll.
+let _rafModalForm = null;
 function ajustarModalAlViewportVisible() {
     if (!window.visualViewport || !modal.classList.contains('open')) return;
-    const vv = window.visualViewport;
-    document.documentElement.style.setProperty('--app-height', vv.height + 'px');
-    // En iOS, al abrirse el teclado el viewport visual puede desplazarse
-    // respecto del layout viewport; corregimos el offset para que el
-    // modal (position: fixed) no quede "corrido" hacia arriba o abajo.
-    modal.style.top = vv.offsetTop + 'px';
+    // Throttle con requestAnimationFrame: durante la animación del teclado
+    // este evento puede dispararse decenas de veces por segundo, y cada
+    // corrida fuerza un recalculo de layout (cambia una CSS var de la que
+    // dependen max-height de varios elementos). Sin este throttle, eso es
+    // lo que se siente como "lag" al abrir/cerrar el teclado.
+    if (_rafModalForm) return;
+    _rafModalForm = requestAnimationFrame(() => {
+        _rafModalForm = null;
+        const vv = window.visualViewport;
+        document.documentElement.style.setProperty('--app-height', vv.height + 'px');
+        // En iOS, al abrirse el teclado el viewport visual puede desplazarse
+        // respecto del layout viewport; corregimos el offset para que el
+        // modal (position: fixed) no quede "corrido" hacia arriba o abajo.
+        modal.style.top = vv.offsetTop + 'px';
+    });
 }
 if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', ajustarModalAlViewportVisible);
@@ -1707,15 +1717,23 @@ async function abrirModalPagoSuscripcion() {
                             buttonTextColor: '#ffffff',
                             borderRadiusMedium: '10px',
                             // Achicamos el Brick (viene con bastante aire por defecto):
-                            // menos padding interno y fuentes un toque más chicas,
-                            // así entra sin scroll en pantallas más chicas y no se
-                            // ve "agrandado" en mobile.
+                            // menos padding interno, así entra sin scroll en
+                            // pantallas más chicas y no se ve "agrandado" en mobile.
+                            //
+                            // IMPORTANTE: las fuentes NUNCA deben quedar por debajo
+                            // de 16px. Cualquier input con font-size < 16px hace que
+                            // iOS Safari haga zoom automático al enfocarlo, y ese zoom
+                            // es lo que después pelea con nuestro ajuste de altura por
+                            // visualViewport: eso es lo que se siente como "el teclado
+                            // se va para todos lados" / título que desaparece al tocar
+                            // el número de tarjeta. Achicar el Brick tiene que hacerse
+                            // con padding, no con tamaño de fuente por debajo de 16px.
                             formPadding: '0px',
                             inputVerticalPadding: '10px',
                             inputHorizontalPadding: '12px',
-                            fontSizeSmall: '12px',
-                            fontSizeMedium: '14px',
-                            fontSizeLarge: '15px',
+                            fontSizeSmall: '16px',
+                            fontSizeMedium: '16px',
+                            fontSizeLarge: '17px',
                         },
                     },
                 },
@@ -1816,14 +1834,48 @@ function cerrarModalPagoSuscripcion() {
 // realmente visible y achicar el modal a ese tamaño en tiempo real.
 // Variable propia (--app-height-pago) para no pisar la del otro modal.
 // ============================================================
+let _rafModalPago = null;
 function ajustarModalPagoAlViewportVisible() {
     const modalPago = document.getElementById('modal-pago-suscripcion');
     if (!window.visualViewport || !modalPago || modalPago.classList.contains('hidden')) return;
-    const vv = window.visualViewport;
-    document.documentElement.style.setProperty('--app-height-pago', vv.height + 'px');
-    modalPago.style.top = vv.offsetTop + 'px';
+    // Mismo throttle que en ajustarModalAlViewportVisible: evita recalcular
+    // el layout en cada micro-evento durante la animación del teclado.
+    if (_rafModalPago) return;
+    _rafModalPago = requestAnimationFrame(() => {
+        _rafModalPago = null;
+        const vv = window.visualViewport;
+        document.documentElement.style.setProperty('--app-height-pago', vv.height + 'px');
+        modalPago.style.top = vv.offsetTop + 'px';
+    });
 }
 if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', ajustarModalPagoAlViewportVisible);
     window.visualViewport.addEventListener('scroll', ajustarModalPagoAlViewportVisible);
 }
+
+// ------------------------------------------------------------
+// Los campos del Card Payment Brick (número de tarjeta, vencimiento,
+// CVV) viven dentro de un <iframe> propio de MercadoPago por motivos
+// de PCI-DSS: nuestra página nunca toca esos datos. Por eso NO podemos
+// escuchar "focus"/"focusin" en esos campos como sí hacemos con
+// centrarCampo() en el modal de producto — un iframe cross-origin no
+// expone esos eventos al documento padre.
+//
+// Lo que SÍ es detectable desde afuera: cuando el foco entra a un
+// iframe, la ventana principal recibe un evento "blur" y
+// document.activeElement pasa a ser ese <iframe>. Usamos eso como
+// proxy para, en ese momento, asegurar que el contenedor del Brick
+// quede visible dentro del sheet — así el header ("Pagar suscripción")
+// no queda tapado cuando el teclado se abre.
+window.addEventListener('blur', () => {
+    const modalPago = document.getElementById('modal-pago-suscripcion');
+    if (!modalPago || modalPago.classList.contains('hidden')) return;
+    if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
+        requestAnimationFrame(() => {
+            const contenedorBrick = document.getElementById('brick-tarjeta');
+            if (contenedorBrick) {
+                contenedorBrick.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
+        });
+    }
+});
