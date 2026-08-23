@@ -1632,6 +1632,16 @@ function renderEstadoSuscripcion(data) {
 let mpInstancia = null;       // instancia del SDK de MercadoPago (se crea una sola vez)
 let brickTarjetaControlador = null; // controlador del brick montado actualmente, para poder desmontarlo
 
+// Skeleton que se ve mientras carga el Brick; se restaura acá porque en el
+// flujo de error más abajo ese mismo contenedor se reemplaza por un mensaje
+// de texto plano, y hay que dejarlo listo para la próxima vez que se abra.
+const ESQUELETO_CARGANDO_PAGO = `
+    <div class="mps-skeleton-row" style="width:100%"></div>
+    <div class="mps-skeleton-row" style="width:72%"></div>
+    <div class="mps-skeleton-row" style="width:88%"></div>
+    <div class="mps-skeleton-row" style="width:55%"></div>
+`;
+
 async function abrirModalPagoSuscripcion() {
     const modal = document.getElementById('modal-pago-suscripcion');
     const cargando = document.getElementById('modal-pago-cargando');
@@ -1641,9 +1651,10 @@ async function abrirModalPagoSuscripcion() {
     modal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
     cargando.classList.remove('hidden');
-    cargando.textContent = 'Cargando formulario de pago...';
+    cargando.innerHTML = ESQUELETO_CARGANDO_PAGO;
     contenedorBrick.classList.add('hidden');
     contenedorBrick.innerHTML = '';
+    ajustarModalPagoAlViewportVisible();
 
     try {
         // 1) Traemos public key + precio vigente desde el Worker
@@ -1653,7 +1664,7 @@ async function abrirModalPagoSuscripcion() {
             throw new Error(config.error || 'No se pudo cargar la configuración de pago');
         }
 
-        montoEl.textContent = `Se te va a cobrar ${formatoPrecio(config.precio)} con la tarjeta que elijas.`;
+        montoEl.textContent = formatoPrecio(config.precio);
 
         // 2) Inicializamos el SDK una sola vez
         if (!mpInstancia) {
@@ -1676,7 +1687,15 @@ async function abrirModalPagoSuscripcion() {
             },
             customization: {
                 visual: {
-                    style: { theme: 'bootstrap' },
+                    style: {
+                        theme: 'flat',
+                        customVariables: {
+                            baseColor: '#0b0c10',
+                            formBackgroundColor: '#ffffff',
+                            buttonTextColor: '#ffffff',
+                            borderRadiusMedium: '10px',
+                        },
+                    },
                 },
             },
             callbacks: {
@@ -1765,4 +1784,24 @@ function cerrarModalPagoSuscripcion() {
         brickTarjetaControlador.unmount();
         brickTarjetaControlador = null;
     }
+}
+
+// ============================================================
+// TECLADO VIRTUAL EN MOBILE (modal de pago) — mismo criterio que
+// ajustarModalAlViewportVisible() para el modal de producto: en
+// Android el layout viewport no se achica cuando aparece el teclado,
+// así que usamos la Visual Viewport API para conocer el alto
+// realmente visible y achicar el modal a ese tamaño en tiempo real.
+// Variable propia (--app-height-pago) para no pisar la del otro modal.
+// ============================================================
+function ajustarModalPagoAlViewportVisible() {
+    const modalPago = document.getElementById('modal-pago-suscripcion');
+    if (!window.visualViewport || !modalPago || modalPago.classList.contains('hidden')) return;
+    const vv = window.visualViewport;
+    document.documentElement.style.setProperty('--app-height-pago', vv.height + 'px');
+    modalPago.style.top = vv.offsetTop + 'px';
+}
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', ajustarModalPagoAlViewportVisible);
+    window.visualViewport.addEventListener('scroll', ajustarModalPagoAlViewportVisible);
 }
