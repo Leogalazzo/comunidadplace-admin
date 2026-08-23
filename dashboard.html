@@ -178,6 +178,17 @@
             border-color: var(--mp-dark);
             box-shadow: 0 0 0 4px var(--mp-accent-glow);
         }
+        /* Placeholders más chicos que el texto tipeado, para que los textos de
+           ejemplo (que suelen ser largos) no compitan visualmente con los datos
+           reales cargados. No toca el font-size del input en sí: en mobile ese
+           tiene que quedar en 16px para evitar el zoom automático de iOS. */
+        #modal-form input::placeholder,
+        #modal-form textarea::placeholder {
+            font-size: 0.85em;
+            font-weight: 500;
+            color: var(--mp-text-muted);
+            opacity: 1;
+        }
         #modal-form textarea { resize: vertical; min-height: 64px; }
         #modal-form select {
             appearance: none; -webkit-appearance: none;
@@ -253,34 +264,43 @@
         #modal-form .tag-chip:hover { border-color: var(--mp-dark); color: var(--mp-text); }
         #modal-form .tag-chip.selected { background: var(--mp-dark); border-color: var(--mp-dark); color: #fff; }
 
-        /* Variantes */
-        #modal-form .variant-header { display: none; grid-template-columns: 3fr 3fr 2fr 76px 34px; gap: 0.5rem; padding: 0 0.25rem; font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mp-text-muted); }
-        #modal-form .variant-row { display: grid; grid-template-columns: 3fr 3fr 2fr 76px 34px; gap: 0.5rem; align-items: center; background: var(--mp-surface-2); border: 1px solid var(--mp-border); border-radius: var(--mp-radius-sm); padding: 0.4rem; margin-top: 0.4rem; transition: opacity .15s; }
-        #modal-form .variant-row.sin-stock { opacity: 0.7; }
-        #modal-form .variant-row input { padding: 0.5rem 0.6rem; font-size: 0.78rem; }
-        #modal-form .variant-price-cell { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+        /* Variantes
+           Cada fila se arma con celdas (.variant-cell-*) en vez de inputs sueltos,
+           así en mobile podemos reacomodar el grid (ver media query) sin tocar el
+           JS que genera el HTML. */
+        #modal-form .variant-header { display: none; grid-template-columns: 2.3fr 2.3fr 1.7fr 112px 34px; gap: 0.5rem; padding: 0 0.25rem; font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mp-text-muted); }
+        #modal-form .variant-row {
+            display: grid; grid-template-columns: 2.3fr 2.3fr 1.7fr 112px 34px;
+            gap: 0.5rem; align-items: center;
+            background: var(--mp-surface-2); border: 1px solid var(--mp-border); border-radius: var(--mp-radius-sm);
+            padding: 0.5rem; margin-top: 0.5rem; transition: opacity .15s;
+        }
+        #modal-form .variant-row.sin-stock { opacity: 0.75; }
+        #modal-form .variant-cell { min-width: 0; }
+        #modal-form .variant-row input { padding: 0.5rem 0.6rem; font-size: 0.78rem; width: 100%; }
+        #modal-form .variant-cell-precio { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
         #modal-form .variant-total-hint { font-size: 0.62rem; font-weight: 700; color: var(--mp-text-muted); white-space: nowrap; padding-left: 0.15rem; }
-        #modal-form .variant-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.25rem; }
-        #modal-form .variant-remove { width: 26px; height: 26px; border-radius: 8px; border: none; background: transparent; color: var(--mp-text-muted); cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0; }
+        #modal-form .variant-cell-remove { display: flex; align-items: center; justify-content: flex-end; }
+        #modal-form .variant-remove { width: 30px; height: 30px; border-radius: 8px; border: none; background: transparent; color: var(--mp-text-muted); cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0; }
         #modal-form .variant-remove:hover { background: var(--mp-red-dim); color: var(--mp-red); }
 
-        /* Switch "Con stock / Sin stock" por variante — mismo lenguaje visual
-           que el toggle "Con stock" del producto, así queda claro de entrada
-           qué hace sin depender de que se entienda un ícono. */
-        #modal-form .variant-stock-toggle-wrap { display: flex; align-items: center; justify-content: flex-end; gap: 0.35rem; }
-        #modal-form .variant-stock-toggle { position: relative; width: 34px; height: 20px; flex-shrink: 0; cursor: pointer; }
-        #modal-form .variant-stock-toggle input { opacity: 0; width: 0; height: 0; }
-        #modal-form .variant-stock-toggle-slider { position: absolute; inset: 0; background: var(--mp-red); border-radius: 99px; transition: .2s; }
-        #modal-form .variant-stock-toggle-slider::before { content: ''; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
-        #modal-form .variant-stock-toggle input:checked + .variant-stock-toggle-slider { background: var(--mp-dark); }
-        #modal-form .variant-stock-toggle input:checked + .variant-stock-toggle-slider::before { transform: translateX(14px); }
-        #modal-form .variant-stock-toggle-text { font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; color: var(--mp-red); white-space: nowrap; }
-        #modal-form .variant-row:not(.sin-stock) .variant-stock-toggle-text { color: var(--mp-text-mid); }
-        #modal-form .variant-stock-btn { width: 26px; height: 26px; border-radius: 8px; border: none; background: transparent; color: var(--mp-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0; }
-        #modal-form .variant-stock-btn:hover { background: var(--mp-border); color: var(--mp-text); }
-        #modal-form .variant-stock-btn.off { color: var(--mp-red); background: var(--mp-red-dim); }
-        #modal-form .variant-stock-btn.off:hover { background: rgba(220,38,38,0.18); }
-        #modal-form .variant-stock-label { font-size: 0.58rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mp-red); background: var(--mp-red-dim); border-radius: 6px; padding: 0.1rem 0.4rem; margin-left: 0.4rem; }
+        /* Botón "Con stock / Sin stock" por variante: un pill grande y con
+           texto siempre visible (antes era un switch mini que en mobile
+           perdía el texto y quedaba difícil de entender/tocar). Toda la
+           superficie del botón es clickeable, no solo una perilla chica. */
+        #modal-form .variant-stock-pill {
+            display: flex; align-items: center; justify-content: center; gap: 0.35rem;
+            width: 100%; padding: 0.55rem 0.5rem; border-radius: 8px; border: 1.5px solid transparent;
+            font-size: 0.64rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em;
+            cursor: pointer; transition: all .15s; white-space: nowrap;
+        }
+        #modal-form .variant-stock-pill-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        #modal-form .variant-stock-pill.on { background: rgba(22,163,74,0.1); color: #16a34a; border-color: rgba(22,163,74,0.25); }
+        #modal-form .variant-stock-pill.on .variant-stock-pill-dot { background: #16a34a; }
+        #modal-form .variant-stock-pill.off { background: var(--mp-red-dim); color: var(--mp-red); border-color: rgba(220,38,38,0.25); }
+        #modal-form .variant-stock-pill.off .variant-stock-pill-dot { background: var(--mp-red); }
+        #modal-form .variant-stock-pill:active { transform: scale(0.97); }
+
         #modal-form .empty-variants { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; border: 1.5px dashed var(--mp-border-light); border-radius: var(--mp-radius-sm); padding: 0.75rem 0.9rem; }
         #modal-form .empty-variants p { font-size: 0.75rem; color: var(--mp-text-muted); }
         #modal-form .empty-variants button { font-size: 0.75rem; font-weight: 700; color: var(--mp-accent-ink); background: none; border: none; cursor: pointer; text-decoration: underline; white-space: nowrap; }
@@ -361,17 +381,29 @@
             #modal-form .tag-chip { padding: 0.26rem 0.5rem; font-size: 0.65rem; }
             #modal-form .btn { padding: 0.5rem 0.7rem; font-size: 0.66rem; }
             #modal-form .btn-sm { padding: 0.28rem 0.5rem; font-size: 0.6rem; }
-            #modal-form .variant-row, #modal-form .variant-header { grid-template-columns: 1fr 1fr 0.7fr 40px 28px; gap: 0.25rem; }
-            #modal-form .variant-row { padding: 0.22rem; margin-top: 0.25rem; border-radius: 8px; }
-            #modal-form .variant-row input { padding: 0.3rem 0.4rem; font-size: 16px; border-radius: 6px; }
-            #modal-form .variant-remove { width: 20px; height: 20px; }
-            #modal-form .variant-actions { gap: 0.15rem; }
-            #modal-form .variant-stock-toggle-wrap { gap: 0.2rem; }
-            #modal-form .variant-stock-toggle { width: 28px; height: 17px; }
-            #modal-form .variant-stock-toggle-slider::before { width: 11px; height: 11px; }
-            #modal-form .variant-stock-toggle input:checked + .variant-stock-toggle-slider::before { transform: translateX(11px); }
-            #modal-form .variant-stock-toggle-text { display: none; }
-            #modal-form .variant-total-hint { font-size: 0.54rem; }
+            /* En mobile el grid de 5 columnas quedaba imposible de tocar
+               (celdas de 28-40px). Se reacomoda en 3 filas de a 2 columnas:
+               nombre+valor / precio (ancho completo) / stock+borrar, con
+               harto más lugar para tocar cada cosa. */
+            #modal-form .variant-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                grid-template-areas:
+                    "nombre valor"
+                    "precio precio"
+                    "stock remove";
+                gap: 0.45rem;
+                padding: 0.55rem; margin-top: 0.45rem; border-radius: 10px;
+            }
+            #modal-form .variant-cell-nombre { grid-area: nombre; }
+            #modal-form .variant-cell-valor { grid-area: valor; }
+            #modal-form .variant-cell-precio { grid-area: precio; }
+            #modal-form .variant-cell-stock { grid-area: stock; }
+            #modal-form .variant-cell-remove { grid-area: remove; justify-self: end; align-self: center; }
+            #modal-form .variant-row input { padding: 0.45rem 0.55rem; font-size: 16px; border-radius: 7px; }
+            #modal-form .variant-remove { width: 34px; height: 34px; }
+            #modal-form .variant-stock-pill { padding: 0.5rem 0.4rem; font-size: 0.62rem; }
+            #modal-form .variant-total-hint { font-size: 0.58rem; }
             #modal-form .empty-variants { padding: 0.45rem 0.6rem; }
             #modal-form .empty-variants p { font-size: 0.65rem; }
             #modal-form .empty-variants button { font-size: 0.65rem; }
@@ -1248,7 +1280,7 @@
             <!-- Encabezado fijo -->
             <div class="modal-header">
                 <div class="modal-header-left">
-                    <h2 id="titulo-modal" class="modal-title">Subir Producto</h2>
+                    <h2 id="titulo-modal" class="modal-title">Nuevo producto</h2>
                     <span class="modal-subtitle">Completá los datos y especificaciones de venta</span>
                 </div>
                 <button type="button" onclick="cerrarFormulario()" class="modal-close" aria-label="Cerrar">
@@ -1349,7 +1381,7 @@
                         <div class="form-section-title" style="margin-bottom: 0;">Variantes</div>
                     </div>
                     <div class="form-section-title-row" style="margin-top: -0.55rem; margin-bottom: 0.6rem;">
-                        <p class="field-hint">Opcional. Ej: "Talle" - "M". Si esa opción tiene otro precio (ej: "Con caja" $60.000) cargalo en Precio: no se suma al precio base, lo reemplaza. Vacío = mismo precio que el base.</p>
+                        <p class="field-hint">Opcional. Ej: "Talle" - "M".</p>
                         <button type="button" onclick="agregarFilaVariante()" class="btn btn-ghost btn-sm">+ Agregar</button>
                     </div>
                     <div id="lista-variantes"></div>
