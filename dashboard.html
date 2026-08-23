@@ -1069,14 +1069,17 @@
                                 <span id="susc-badge" class="px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide"></span>
                             </div>
 
-                            <button
-                                id="susc-btn-pagar"
-                                type="button"
-                                onclick="abrirModalPagoSuscripcion()"
-                                class="hidden w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-yellow-400 text-black px-5 py-3 rounded-xl font-bold text-sm uppercase tracking-wide hover:bg-obsidian hover:text-white transition-all active:scale-95"
-                            >
-                                Pagar suscripción
-                            </button>
+                            <div class="w-full sm:w-auto">
+                                <button
+                                    id="susc-btn-pagar"
+                                    type="button"
+                                    onclick="abrirModalPagoSuscripcion()"
+                                    class="hidden w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-yellow-400 text-black px-5 py-3 rounded-xl font-bold text-sm uppercase tracking-wide hover:bg-obsidian hover:text-white transition-all active:scale-95 disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed disabled:pointer-events-none disabled:hover:bg-yellow-400 disabled:hover:text-black disabled:active:scale-100"
+                                >
+                                    Pagar suscripción
+                                </button>
+                                <p id="susc-btn-pagar-hint" class="hidden text-[11px] text-slate-400 mt-2 max-w-[220px] sm:max-w-xs leading-relaxed"></p>
+                            </div>
                         </div>
 
                         <!-- TRANSFERENCIA BANCARIA -->
