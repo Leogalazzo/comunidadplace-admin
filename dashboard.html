@@ -528,28 +528,33 @@
             height: var(--app-height-pago, 100dvh);
         }
         #modal-pago-suscripcion .mps-sheet {
-            max-height: min(90vh, 640px);
-            max-height: min(90dvh, 640px);
-            max-height: min(calc(var(--app-height-pago, 100dvh) * 0.9), 640px);
+            /* Antes tenía un tope fijo de 640px en TODAS las resoluciones, lo
+               que generaba scroll innecesario en pantallas grandes con mucho
+               alto disponible. Ahora el tope sube a 760px y usa más % de
+               alto de viewport, así en desktop/notebooks entra todo sin
+               scroll y sólo hace scroll cuando el viewport es realmente chico. */
+            max-height: min(92vh, 760px);
+            max-height: min(92dvh, 760px);
+            max-height: min(calc(var(--app-height-pago, 100dvh) * 0.92), 760px);
         }
         #modal-pago-suscripcion .mps-handle { display: none; }
 
         #modal-pago-suscripcion .mps-header {
-            display: flex; align-items: center; gap: 0.85rem;
-            padding: 1.4rem 1.85rem 0;
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 1.1rem 1.85rem 0;
         }
         #modal-pago-suscripcion .mps-header-icon {
-            width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+            width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0;
             display: flex; align-items: center; justify-content: center;
             background: linear-gradient(135deg, #fef9c3, #fde68a);
             color: var(--mps-accent-ink);
         }
-        #modal-pago-suscripcion .mps-header-icon svg { width: 20px; height: 20px; }
+        #modal-pago-suscripcion .mps-header-icon svg { width: 17px; height: 17px; }
 
         #modal-pago-suscripcion .mps-monto-card {
             display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
             background: var(--mps-surface-2); border: 1px solid var(--mps-border);
-            border-radius: 14px; padding: 0.9rem 1.05rem; margin: 1.15rem 0;
+            border-radius: 14px; padding: 0.7rem 1rem; margin: 0.85rem 0;
         }
         #modal-pago-suscripcion .mps-monto-icon {
             width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
@@ -568,8 +573,8 @@
         @keyframes mps-shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
 
         #modal-pago-suscripcion .mps-trust {
-            display: flex; align-items: center; gap: 0.65rem;
-            padding: 0.9rem 1.85rem;
+            display: flex; align-items: center; gap: 0.6rem;
+            padding: 0.65rem 1.85rem;
             border-top: 1px solid var(--mps-border);
             background: var(--mps-surface-2);
             flex-shrink: 0;
@@ -588,11 +593,11 @@
                 display: block; position: absolute; top: 0.55rem; left: 50%; transform: translateX(-50%);
                 width: 36px; height: 4px; border-radius: 99px; background: var(--mps-border-light); z-index: 20;
             }
-            #modal-pago-suscripcion .mps-header { padding: 1.55rem 1.35rem 0; }
-            #modal-pago-suscripcion .mps-body { padding-left: 1.35rem; padding-right: 1.35rem; }
+            #modal-pago-suscripcion .mps-header { padding: 1.15rem 1.35rem 0; }
+            #modal-pago-suscripcion .mps-body { padding-left: 1.35rem; padding-right: 1.35rem; padding-bottom: 0.85rem; }
             #modal-pago-suscripcion .mps-trust {
-                padding: 0.85rem 1.35rem;
-                padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
+                padding: 0.7rem 1.35rem;
+                padding-bottom: max(0.7rem, env(safe-area-inset-bottom));
             }
         }
     </style>
@@ -723,7 +728,7 @@
             <div id="banner-tienda-bloqueada" class="hidden mb-6 md:mb-8 bg-red-50 border border-red-200 rounded-2xl p-4 sm:p-5 flex items-start gap-3 sm:gap-4">
                 <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-red-500 text-white flex items-center justify-center flex-shrink-0 text-lg font-black">!</div>
                 <div class="min-w-0">
-                    <p class="font-extrabold text-red-700 text-sm sm:text-base">Tu tienda está bloqueada</p>
+                    <p id="banner-tienda-bloqueada-titulo" class="font-extrabold text-red-700 text-sm sm:text-base">Tu tienda está bloqueada</p>
                     <p id="banner-tienda-bloqueada-motivo" class="text-red-600/90 text-xs sm:text-sm font-medium mt-1 leading-relaxed"></p>
                     <p class="text-red-500/80 text-[11px] sm:text-xs font-semibold mt-2">
                         Mientras esté bloqueada, tu tienda no se muestra en la comunidad. Podés seguir cargando y editando productos desde acá, pero no van a ser visibles hasta que se reactive. No se eliminaron tus productos.
@@ -1699,7 +1704,7 @@
     <div id="modal-pago-suscripcion" onclick="if (event.target === this) cerrarModalPagoSuscripcion()" class="fixed inset-0 z-[85] hidden flex items-center justify-center p-4 sm:p-6">
         <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-md"></div>
 
-        <div class="mps-sheet bg-white w-full max-w-md rounded-[28px] relative z-10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] overflow-hidden animate-fade-in flex flex-col">
+        <div class="mps-sheet bg-white w-full max-w-md sm:max-w-lg rounded-[28px] relative z-10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] overflow-hidden animate-fade-in flex flex-col">
             <div class="mps-handle"></div>
             <div class="h-1.5 w-full bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-400 flex-shrink-0"></div>
 
@@ -1721,7 +1726,7 @@
                 </div>
             </div>
 
-            <div class="mps-body flex-1 overflow-y-auto px-6 sm:px-7 pb-6">
+            <div class="mps-body flex-1 overflow-y-auto px-6 sm:px-7 pb-4">
                 <div class="mps-monto-card">
                     <div class="min-w-0">
                         <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Vas a pagar</p>
