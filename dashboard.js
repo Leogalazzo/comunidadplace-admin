@@ -204,12 +204,24 @@ function actualizarBannerBloqueo(emprendedor) {
     const banner = document.getElementById('banner-tienda-bloqueada');
     if (!banner) return;
 
-    const bloqueada = emprendedor && emprendedor.activo === false;
-    banner.classList.toggle('hidden', !bloqueada);
+    // Usamos calcularEstadoAcceso() (la misma función que dispara el modal
+    // de vencimiento y que usa admin.js) en vez de mirar sólo "activo".
+    // "activo" únicamente se pone en false cuando el admin bloquea a mano;
+    // cuando lo que pasó es que se venció el mes gratis o la suscripción,
+    // "activo" sigue en true y este banner nunca se enteraba.
+    const acceso = calcularEstadoAcceso(emprendedor);
+    const titulo = document.getElementById('banner-tienda-bloqueada-titulo');
+    const motivoEl = document.getElementById('banner-tienda-bloqueada-motivo');
 
-    if (bloqueada) {
-        document.getElementById('banner-tienda-bloqueada-motivo').textContent =
-            emprendedor.motivo_bloqueo || 'Contactate con el equipo de la comunidad para más información.';
+    banner.classList.toggle('hidden', !acceso.bloqueado);
+    if (!acceso.bloqueado) return;
+
+    if (acceso.motivo === 'admin') {
+        if (titulo) titulo.textContent = 'Tu tienda está bloqueada';
+        motivoEl.textContent = emprendedor.motivo_bloqueo || 'Contactate con el equipo de la comunidad para más información.';
+    } else {
+        if (titulo) titulo.textContent = 'Tu tienda no se muestra en la comunidad';
+        motivoEl.textContent = 'Terminó tu mes gratis (o venció tu suscripción) sin renovarse. Activá el pago para que vuelva a aparecer.';
     }
 }
 
@@ -1694,6 +1706,16 @@ async function abrirModalPagoSuscripcion() {
                             formBackgroundColor: '#ffffff',
                             buttonTextColor: '#ffffff',
                             borderRadiusMedium: '10px',
+                            // Achicamos el Brick (viene con bastante aire por defecto):
+                            // menos padding interno y fuentes un toque más chicas,
+                            // así entra sin scroll en pantallas más chicas y no se
+                            // ve "agrandado" en mobile.
+                            formPadding: '0px',
+                            inputVerticalPadding: '10px',
+                            inputHorizontalPadding: '12px',
+                            fontSizeSmall: '12px',
+                            fontSizeMedium: '14px',
+                            fontSizeLarge: '15px',
                         },
                     },
                 },
