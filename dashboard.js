@@ -553,7 +553,7 @@ function abrirFormulario() {
     variantesEnEdicion = [];
     variantesEliminadas = [];
     mediosPagoProductoSeleccion = [];
-    document.getElementById('titulo-modal').textContent = 'Subir Producto';
+    document.getElementById('titulo-modal').textContent = 'Nuevo producto';
     form.reset();
     document.getElementById('imagen').value = '';
     document.getElementById('categoria').value = '';
@@ -637,7 +637,7 @@ async function editarProducto(id) {
     variantesEliminadas = [];
     mediosPagoProductoSeleccion = p.medios_pago || [];
 
-    document.getElementById('titulo-modal').textContent = 'Editar Producto';
+    document.getElementById('titulo-modal').textContent = 'Editar producto';
     document.getElementById('nombre').value = p.nombre;
     document.getElementById('precio').value = formatoPrecioInput(p.precio);
     document.getElementById('precio_anterior').value = p.precio_anterior ? formatoPrecioInput(p.precio_anterior) : '';
@@ -778,25 +778,29 @@ function renderVariantes() {
         const sinStock = v.disponible === false;
         return `
         <div class="variant-row ${sinStock ? 'sin-stock' : ''}">
-            <input type="text" placeholder="Ej: Talle, Color, Sabor" value="${escapeHtml(v.nombre)}"
-                oninput="actualizarCampoVariante(${idx}, 'nombre', this.value)">
-            <input type="text" placeholder="Ej: M, Rojo, Chocolate" value="${escapeHtml(v.valor)}"
-                oninput="actualizarCampoVariante(${idx}, 'valor', this.value)">
-            <div class="variant-price-cell">
+            <div class="variant-cell variant-cell-nombre">
+                <input type="text" placeholder="Ej: Talle, Color, Sabor" value="${escapeHtml(v.nombre)}"
+                    oninput="actualizarCampoVariante(${idx}, 'nombre', this.value)">
+            </div>
+            <div class="variant-cell variant-cell-valor">
+                <input type="text" placeholder="Ej: M, Rojo, Chocolate" value="${escapeHtml(v.valor)}"
+                    oninput="actualizarCampoVariante(${idx}, 'valor', this.value)">
+            </div>
+            <div class="variant-cell variant-cell-precio">
                 <input type="text" inputmode="decimal" id="variant-precio-${idx}" placeholder="${formatoPrecioInput(parsearPrecio(document.getElementById('precio')?.value || 0)) || '0'}" value="${formatoPrecioInput(parsearPrecio(v.precio_adicional ?? 0)) === '0' ? '' : formatoPrecioInput(parsearPrecio(v.precio_adicional ?? 0))}"
                     oninput="sanitizarInputPrecio(this); actualizarCampoVariante(${idx}, 'precio_adicional', this.value); actualizarTotalVariante(${idx})"
                     onblur="formatearInputPrecio(this)">
                 <span class="variant-total-hint" id="variant-total-${idx}">Precio final: ${formatoPrecio(calcularTotalVariante(idx))}</span>
             </div>
-            <div class="variant-stock-toggle-wrap">
-                <label class="variant-stock-toggle" title="${sinStock ? 'Sin stock: tocá para marcar que hay stock' : 'Con stock: tocá para marcar que no hay stock'}">
-                    <input type="checkbox" ${sinStock ? '' : 'checked'} onchange="toggleDisponibleVariante(${idx})">
-                    <span class="variant-stock-toggle-slider"></span>
-                </label>
-                <span class="variant-stock-toggle-text">${sinStock ? 'Sin stock' : 'Con stock'}</span>
+            <div class="variant-cell variant-cell-stock">
+                <button type="button" class="variant-stock-pill ${sinStock ? 'off' : 'on'}"
+                    onclick="toggleDisponibleVariante(${idx})"
+                    title="${sinStock ? 'Sin stock: tocá para marcar que hay stock' : 'Con stock: tocá para marcar que no hay stock'}">
+                    <span class="variant-stock-pill-dot"></span>${sinStock ? 'Sin stock' : 'Con stock'}
+                </button>
             </div>
-            <div class="variant-actions">
-                <button type="button" onclick="quitarFilaVariante(${idx})" title="Quitar" class="variant-remove">✕</button>
+            <div class="variant-cell variant-cell-remove">
+                <button type="button" onclick="quitarFilaVariante(${idx})" title="Quitar variante" class="variant-remove">✕</button>
             </div>
         </div>
     `;
