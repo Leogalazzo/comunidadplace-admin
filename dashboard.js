@@ -1656,6 +1656,23 @@ function renderEstadoSuscripcion(data) {
         : '';
 
     btnPagar.classList.toggle('hidden', !info.mostrarBoton);
+
+    // Mientras dura el mes gratis, el botón queda visible pero oscurecido
+    // y sin funcionar: no tiene sentido cobrar antes de que termine el
+    // período gratuito. Se reactiva solo (mismo render) apenas
+    // diasRestantesPrueba llega a 0.
+    const hint = document.getElementById('susc-btn-pagar-hint');
+    const enMesGratisVigente = estado === 'prueba_gratis' && diasRestantesPrueba > 0;
+
+    btnPagar.disabled = enMesGratisVigente;
+    btnPagar.setAttribute('aria-disabled', String(enMesGratisVigente));
+
+    if (hint) {
+        hint.classList.toggle('hidden', !enMesGratisVigente);
+        hint.textContent = enMesGratisVigente
+            ? `Vas a poder pagar cuando termine tu mes gratis (en ${diasRestantesPrueba === 1 ? '1 día' : diasRestantesPrueba + ' días'}).`
+            : '';
+    }
 }
 
 // ------------------------------------------------------------
