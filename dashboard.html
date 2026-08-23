@@ -507,6 +507,94 @@
         .qr-fuente-opcion.qr-fuente-activa .qr-fuente-nombre { color: #fff; }
         .qr-fuente-opcion .qr-fuente-check { margin-left: auto; color: #facc15; font-weight: 900; font-size: 0.85rem; display: none; flex-shrink: 0; }
         .qr-fuente-opcion.qr-fuente-activa .qr-fuente-check { display: block; }
+
+        /* ============================================================
+           MODAL: PAGO DE SUSCRIPCIÓN — rediseño mobile-first
+           Mismo patrón que #modal-form: bottom sheet en mobile con
+           manija, alto ajustado al teclado real vía visualViewport
+           (--app-height-pago, seteada en dashboard.js), y una tarjeta
+           de monto + skeleton de carga en vez de texto plano, para que
+           se sienta a la altura del resto del panel mientras carga el
+           Card Payment Brick de MercadoPago.
+           ============================================================ */
+        #modal-pago-suscripcion {
+            --mps-surface-2: #f8fafc;
+            --mps-border: #e2e8f0;
+            --mps-border-light: #cbd5e1;
+            --mps-text-muted: #94a3b8;
+            --mps-accent-ink: #92670a;
+            height: 100vh;
+            height: 100dvh;
+            height: var(--app-height-pago, 100dvh);
+        }
+        #modal-pago-suscripcion .mps-sheet {
+            max-height: min(90vh, 640px);
+            max-height: min(90dvh, 640px);
+            max-height: min(calc(var(--app-height-pago, 100dvh) * 0.9), 640px);
+        }
+        #modal-pago-suscripcion .mps-handle { display: none; }
+
+        #modal-pago-suscripcion .mps-header {
+            display: flex; align-items: center; gap: 0.85rem;
+            padding: 1.4rem 1.85rem 0;
+        }
+        #modal-pago-suscripcion .mps-header-icon {
+            width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #fef9c3, #fde68a);
+            color: var(--mps-accent-ink);
+        }
+        #modal-pago-suscripcion .mps-header-icon svg { width: 20px; height: 20px; }
+
+        #modal-pago-suscripcion .mps-monto-card {
+            display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+            background: var(--mps-surface-2); border: 1px solid var(--mps-border);
+            border-radius: 14px; padding: 0.9rem 1.05rem; margin: 1.15rem 0;
+        }
+        #modal-pago-suscripcion .mps-monto-icon {
+            width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+            background: #fff; border: 1px solid var(--mps-border);
+            display: flex; align-items: center; justify-content: center; color: var(--mps-text-muted);
+        }
+        #modal-pago-suscripcion .mps-monto-icon svg { width: 16px; height: 16px; }
+
+        /* Skeleton del formulario mientras carga el Brick */
+        #modal-pago-suscripcion .mps-skeleton-row {
+            height: 44px; border-radius: 10px; margin-bottom: 0.65rem;
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
+            background-size: 400% 100%;
+            animation: mps-shimmer 1.4s ease infinite;
+        }
+        @keyframes mps-shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+
+        #modal-pago-suscripcion .mps-trust {
+            display: flex; align-items: center; gap: 0.65rem;
+            padding: 0.9rem 1.85rem;
+            border-top: 1px solid var(--mps-border);
+            background: var(--mps-surface-2);
+            flex-shrink: 0;
+        }
+        #modal-pago-suscripcion .mps-trust svg { width: 17px; height: 17px; flex-shrink: 0; color: var(--mps-text-muted); }
+
+        @media (max-width: 640px) {
+            #modal-pago-suscripcion { padding: 0; align-items: flex-end; }
+            #modal-pago-suscripcion .mps-sheet {
+                border-radius: 22px 22px 0 0 !important;
+                max-height: 94vh; max-height: 92dvh;
+                max-width: 100%; width: 100%;
+                position: relative;
+            }
+            #modal-pago-suscripcion .mps-handle {
+                display: block; position: absolute; top: 0.55rem; left: 50%; transform: translateX(-50%);
+                width: 36px; height: 4px; border-radius: 99px; background: var(--mps-border-light); z-index: 20;
+            }
+            #modal-pago-suscripcion .mps-header { padding: 1.55rem 1.35rem 0; }
+            #modal-pago-suscripcion .mps-body { padding-left: 1.35rem; padding-right: 1.35rem; }
+            #modal-pago-suscripcion .mps-trust {
+                padding: 0.85rem 1.35rem;
+                padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
+            }
+        }
     </style>
 </head>
 <body class="bg-[#f1f5f9] text-slate-900 antialiased min-h-screen selection:bg-yellow-400 selection:text-black">
@@ -1611,7 +1699,8 @@
     <div id="modal-pago-suscripcion" onclick="if (event.target === this) cerrarModalPagoSuscripcion()" class="fixed inset-0 z-[85] hidden flex items-center justify-center p-4 sm:p-6">
         <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-md"></div>
 
-        <div class="bg-white w-full max-w-md rounded-[28px] relative z-10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] overflow-hidden animate-fade-in max-h-[90vh] flex flex-col">
+        <div class="mps-sheet bg-white w-full max-w-md rounded-[28px] relative z-10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] overflow-hidden animate-fade-in flex flex-col">
+            <div class="mps-handle"></div>
             <div class="h-1.5 w-full bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-400 flex-shrink-0"></div>
 
             <button type="button" onclick="cerrarModalPagoSuscripcion()" aria-label="Cerrar" class="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center bg-slate-100/80 text-slate-400 hover:text-slate-700 hover:bg-slate-200 active:scale-90 transition-all z-10">
@@ -1620,22 +1709,46 @@
                 </svg>
             </button>
 
-            <div class="p-6 sm:p-7 pt-8 overflow-y-auto">
-                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-600 mb-1">Pago seguro</p>
-                <h2 class="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight mb-1">Pagar suscripción</h2>
-                <p id="modal-pago-monto" class="text-sm text-slate-500 mb-5"></p>
+            <div class="mps-header flex-shrink-0">
+                <div class="mps-header-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0018.75 4.5H5.25A2.25 2.25 0 003 6.75v10.5A2.25 2.25 0 005.25 19.5z" />
+                    </svg>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-600 mb-0.5">Pago seguro</p>
+                    <h2 class="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight leading-tight">Pagar suscripción</h2>
+                </div>
+            </div>
 
-                <div id="modal-pago-cargando" class="py-10 text-center text-sm text-slate-400">
-                    Cargando formulario de pago...
+            <div class="mps-body flex-1 overflow-y-auto px-6 sm:px-7 pb-6">
+                <div class="mps-monto-card">
+                    <div class="min-w-0">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Vas a pagar</p>
+                        <p id="modal-pago-monto" class="text-xl font-extrabold text-slate-900 leading-none">—</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Con la tarjeta que elijas</p>
+                    </div>
+                    <div class="mps-monto-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0018.75 4.5H5.25A2.25 2.25 0 003 6.75v10.5A2.25 2.25 0 005.25 19.5z" />
+                        </svg>
+                    </div>
+                </div>
+
+                <div id="modal-pago-cargando">
+                    <div class="mps-skeleton-row" style="width:100%"></div>
+                    <div class="mps-skeleton-row" style="width:72%"></div>
+                    <div class="mps-skeleton-row" style="width:88%"></div>
+                    <div class="mps-skeleton-row" style="width:55%"></div>
                 </div>
 
                 <!-- Acá monta el SDK de MercadoPago el formulario de tarjeta -->
                 <div id="brick-tarjeta" class="hidden"></div>
+            </div>
 
-                <p class="text-[11px] text-slate-400 mt-4 flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 10-8 0v4h8z"/></svg>
-                    Tus datos de tarjeta los procesa MercadoPago de forma segura, nunca pasan por nuestros servidores.
-                </p>
+            <div class="mps-trust">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 10-8 0v4h8z"/></svg>
+                <p class="text-[11px] text-slate-400 leading-snug">Tus datos de tarjeta los procesa <span class="font-bold text-slate-500">MercadoPago</span> de forma segura, nunca pasan por nuestros servidores.</p>
             </div>
         </div>
     </div>
