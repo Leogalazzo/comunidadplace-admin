@@ -1625,30 +1625,144 @@ function renderEstadoSuscripcion(data) {
     btnPagar.classList.toggle('hidden', !info.mostrarBoton);
 }
 
-// Llama al Worker para crear la preapproval y redirige a MercadoPago
-async function iniciarPagoSuscripcion(btnElegido) {
-    const btn = btnElegido || document.getElementById('susc-btn-pagar');
-    const textoOriginal = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Generando link de pago...';
+// ------------------------------------------------------------
+// Pago de la suscripción con Card Payment Brick (embebido, sin
+// redirigir a mercadopago.com ni abrir la app en mobile).
+// ------------------------------------------------------------
+let mpInstancia = null;       // instancia del SDK de MercadoPago (se crea una sola vez)
+let brickTarjetaControlador = null; // controlador del brick montado actualmente, para poder desmontarlo
+
+async function abrirModalPagoSuscripcion() {
+    const modal = document.getElementById('modal-pago-suscripcion');
+    const cargando = document.getElementById('modal-pago-cargando');
+    const contenedorBrick = document.getElementById('brick-tarjeta');
+    const montoEl = document.getElementById('modal-pago-monto');
+
+    modal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    cargando.classList.remove('hidden');
+    cargando.textContent = 'Cargando formulario de pago...';
+    contenedorBrick.classList.add('hidden');
+    contenedorBrick.innerHTML = '';
 
     try {
-        const res = await fetch(`${WORKER_SUSCRIPCIONES_URL}/crear-suscripcion`, {
+        // 1) Traemos public key + precio vigente desde el Worker
+        const resConfig = await fetch(`${WORKER_SUSCRIPCIONES_URL}/config-pago`);
+        const config = await resConfig.json();
+        if (!resConfig.ok || !config.publicKey) {
+            throw new Error(config.error || 'No se pudo cargar la configuración de pago');
+        }
+
+        montoEl.textContent = `Se te va a cobrar ${formatoPrecio(config.precio)} con la tarjeta que elijas.`;
+
+        // 2) Inicializamos el SDK una sola vez
+        if (!mpInstancia) {
+            mpInstancia = new MercadoPago(config.publicKey, { locale: 'es-AR' });
+        }
+
+        // 3) Si ya había un brick montado (el emprendedor cerró y volvió a
+        //    abrir el modal), lo desmontamos antes de crear uno nuevo.
+        if (brickTarjetaControlador) {
+            await brickTarjetaControlador.unmount();
+            brickTarjetaControlador = null;
+        }
+
+        const emailPagador = perfilActual?.email || undefined;
+
+        brickTarjetaControlador = await mpInstancia.bricks().create('cardPayment', 'brick-tarjeta', {
+            initialization: {
+                amount: config.precio,
+                payer: emailPagador ? { email: emailPagador } : undefined,
+            },
+            customization: {
+                visual: {
+                    style: { theme: 'bootstrap' },
+                },
+            },
+            callbacks: {
+                onReady: () => {
+                    cargando.classList.add('hidden');
+                    contenedorBrick.classList.remove('hidden');
+                },
+                onError: (error) => {
+                    console.error('Error del Card Payment Brick:', error);
+                },
+                onSubmit: (cardFormData) => {
+                    return enviarPagoSuscripcion(cardFormData);
+                },
+            },
+        });
+    } catch (err) {
+        console.error(err);
+        cargando.textContent = 'No pudimos cargar el formulario de pago. Cerrá esta ventana y probá de nuevo.';
+        mostrarToast('No pudimos iniciar el pago. Probá de nuevo en un momento.', 'error');
+    }
+}
+
+// Manda el token de la tarjeta (generado por el Brick, nunca el número
+// de tarjeta en sí) al Worker, que crea el pago contra la API de MP.
+async function enviarPagoSuscripcion(cardFormData) {
+    try {
+        const res = await fetch(`${WORKER_SUSCRIPCIONES_URL}/procesar-pago-suscripcion`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ emprendedor_id: perfilActual.id }),
+            body: JSON.stringify({
+                emprendedor_id: perfilActual.id,
+                token: cardFormData.token,
+                payment_method_id: cardFormData.payment_method_id,
+                issuer_id: cardFormData.issuer_id,
+                installments: cardFormData.installments,
+                payer: cardFormData.payer,
+            }),
         });
         const data = await res.json();
 
-        if (!res.ok || !data.init_point) {
-            throw new Error((data.error || 'No se pudo generar el link de pago') + (data.detalle ? ' — ' + data.detalle : ''));
+        if (!res.ok) {
+            throw new Error((data.error || 'No se pudo procesar el pago') + (data.detalle ? ' — ' + JSON.stringify(data.detalle) : ''));
         }
 
-        window.location.href = data.init_point;
+        if (data.status === 'approved') {
+            mostrarToast('¡Pago acreditado! Tu suscripción ya está activa.', 'exito');
+            cerrarModalPagoSuscripcion();
+            await cargarPerfilEmprendedor();
+        } else if (data.status === 'in_process' || data.status === 'pending') {
+            mostrarToast('Tu pago quedó en revisión. Te avisamos apenas se acredite.', 'info');
+            cerrarModalPagoSuscripcion();
+        } else {
+            mostrarToast(mensajeRechazoPago(data.status_detail), 'error');
+        }
     } catch (err) {
         console.error(err);
-        mostrarToast('No pudimos iniciar el pago. Probá de nuevo en un momento.', 'error');
-        btn.disabled = false;
-        btn.textContent = textoOriginal;
+        mostrarToast('No pudimos procesar el pago. Probá de nuevo o con otra tarjeta.', 'error');
+        // Re-lanzamos para que el Brick sepa que falló y no bloquee el botón.
+        throw err;
+    }
+}
+
+// Traduce los motivos de rechazo más comunes de MercadoPago a un mensaje entendible.
+function mensajeRechazoPago(statusDetail) {
+    const MENSAJES = {
+        cc_rejected_insufficient_amount: 'Fondos insuficientes en la tarjeta.',
+        cc_rejected_bad_filled_card_number: 'Revisá el número de tarjeta.',
+        cc_rejected_bad_filled_date: 'Revisá la fecha de vencimiento.',
+        cc_rejected_bad_filled_security_code: 'Revisá el código de seguridad.',
+        cc_rejected_bad_filled_other: 'Revisá los datos de la tarjeta.',
+        cc_rejected_card_disabled: 'Llamá a tu banco para activar la tarjeta.',
+        cc_rejected_call_for_authorize: 'Tenés que autorizar el pago con tu banco.',
+        cc_rejected_duplicated_payment: 'Ya hiciste un pago por ese monto, esperá unos minutos.',
+        cc_rejected_high_risk: 'El pago fue rechazado por seguridad. Probá con otro medio de pago.',
+        cc_rejected_max_attempts: 'Llegaste al límite de intentos permitidos.',
+        cc_rejected_other_reason: 'Tu banco rechazó el pago. Probá con otra tarjeta.',
+    };
+    return MENSAJES[statusDetail] || 'El pago fue rechazado. Probá de nuevo o con otra tarjeta.';
+}
+
+function cerrarModalPagoSuscripcion() {
+    const modal = document.getElementById('modal-pago-suscripcion');
+    modal.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+    if (brickTarjetaControlador) {
+        brickTarjetaControlador.unmount();
+        brickTarjetaControlador = null;
     }
 }
