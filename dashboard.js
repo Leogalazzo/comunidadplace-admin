@@ -1606,12 +1606,22 @@ function renderEstadoSuscripcion(data) {
     cargando.classList.add('hidden');
     contenido.classList.remove('hidden');
 
-    const estado = data.suscripcion_estado || 'sin_suscripcion';
-    const vencimiento = data.fecha_vencimiento_suscripcion
-        ? new Date(data.fecha_vencimiento_suscripcion)
-        : null;
+    // calcularEstadoAcceso() ya sabe distinguir el mes gratis real de lo
+    // que diga "suscripcion_estado" en la base (esa columna puede traer
+    // 'vencida' u otro valor que no corresponde todavía a una cuenta que
+    // nunca generó una suscripción paga en MercadoPago). Usamos el mismo
+    // criterio acá para que el cartel no contradiga al resto del panel.
+    const acceso = calcularEstadoAcceso(data);
 
-    // Días que quedan de prueba gratis (0 si ya venció o no aplica)
+    const estado = acceso.enPruebaGratis
+        ? 'prueba_gratis'
+        : (data.suscripcion_estado || 'sin_suscripcion');
+
+    const vencimiento = acceso.enPruebaGratis
+        ? acceso.vencimiento
+        : (data.fecha_vencimiento_suscripcion ? new Date(data.fecha_vencimiento_suscripcion) : null);
+
+    // Días que quedan de mes gratis (0 si ya venció o no aplica)
     const diasRestantesPrueba = (estado === 'prueba_gratis' && vencimiento)
         ? Math.max(0, Math.ceil((vencimiento.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
         : 0;
@@ -1620,9 +1630,9 @@ function renderEstadoSuscripcion(data) {
         sin_suscripcion: { texto: 'Todavía no activaste tu suscripción', color: 'bg-slate-100 text-slate-500', badge: 'Sin activar', mostrarBoton: true },
         prueba_gratis: {
             texto: diasRestantesPrueba > 0
-                ? `Estás en tu mes de prueba gratis · te ${diasRestantesPrueba === 1 ? 'queda 1 día' : `quedan ${diasRestantesPrueba} días`}`
-                : 'Tu mes de prueba gratis ya terminó',
-            color: 'bg-blue-100 text-blue-700', badge: 'Prueba gratis', mostrarBoton: true,
+                ? `Estás en tu mes gratis · te ${diasRestantesPrueba === 1 ? 'queda 1 día' : `quedan ${diasRestantesPrueba} días`}`
+                : 'Tu mes gratis ya terminó',
+            color: 'bg-blue-100 text-blue-700', badge: 'Mes gratis', mostrarBoton: true,
         },
         pending: { texto: 'Autorización de pago pendiente', color: 'bg-amber-100 text-amber-700', badge: 'Pendiente', mostrarBoton: true },
         authorized: { texto: 'Suscripción activa', color: 'bg-emerald-100 text-emerald-700', badge: 'Activa', mostrarBoton: false },
@@ -1640,7 +1650,8 @@ function renderEstadoSuscripcion(data) {
 
     vencimientoEl.textContent = vencimiento
         ? (estado === 'authorized' ? 'Próximo cobro: '
-            : estado === 'prueba_gratis' ? 'Prueba gratis hasta: '
+            : estado === 'prueba_gratis'
+                ? (diasRestantesPrueba > 0 ? 'Próximo cobro: ' : 'Tu mes gratis venció el: ')
             : 'Venció el: ') + vencimiento.toLocaleDateString('es-AR')
         : '';
 
