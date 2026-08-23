@@ -24,6 +24,20 @@ const form = document.getElementById('form-producto');
 const selectCategoria = document.getElementById('categoria');
 const listaVariantes = document.getElementById('lista-variantes');
 
+// Los campos de Instagram/TikTok solo piden el usuario (sin @ ni link).
+// Esta función limpia lo que haya en el campo para quedarnos solo con el
+// usuario, ya sea que la persona escriba "usuario", "@usuario" o pegue
+// por error un link completo (ej: dato viejo guardado como URL entera).
+function extraerUsuarioRedSocial(valor) {
+    if (!valor) return '';
+    let v = valor.trim();
+    v = v.replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+    v = v.replace(/^(instagram\.com|tiktok\.com)\//i, '');
+    v = v.replace(/^@/, '');
+    v = v.split(/[?#]/)[0].split('/')[0];
+    return v.trim();
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     perfilActual = await requerirSesion('emprendedor');
     if (!perfilActual) return; // requerirSesion ya redirige si no corresponde
@@ -565,20 +579,53 @@ function abrirFormulario() {
     modal.classList.add('open');
     document.body.classList.add('overflow-hidden');
     document.getElementById('cuerpo-modal-producto').scrollTop = 0;
+    ajustarModalAlViewportVisible();
 }
 
-// En mobile, cuando aparece el teclado, algunos navegadores dejan el input activo
-// tapado detrás del teclado. Al enfocar un campo dentro del modal, lo centramos
-// en la zona visible con un pequeño delay (esperando a que el teclado termine de abrir).
+// ============================================================
+// TECLADO VIRTUAL EN MOBILE — el modal se ajusta al alto real
+// ============================================================
+// Muchos navegadores (sobre todo Android) NO achican el layout viewport
+// cuando aparece el teclado, así que el 100dvh del modal se queda igual
+// de grande y el teclado tapa el campo activo sin dejar nada para
+// scrollear. Usamos la Visual Viewport API para conocer el alto
+// realmente visible y achicar el modal a ese tamaño en tiempo real;
+// así el campo enfocado siempre queda dentro del área con scroll.
+function ajustarModalAlViewportVisible() {
+    if (!window.visualViewport || !modal.classList.contains('open')) return;
+    const vv = window.visualViewport;
+    document.documentElement.style.setProperty('--app-height', vv.height + 'px');
+    // En iOS, al abrirse el teclado el viewport visual puede desplazarse
+    // respecto del layout viewport; corregimos el offset para que el
+    // modal (position: fixed) no quede "corrido" hacia arriba o abajo.
+    modal.style.top = vv.offsetTop + 'px';
+}
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', ajustarModalAlViewportVisible);
+    window.visualViewport.addEventListener('scroll', ajustarModalAlViewportVisible);
+}
+
+// Al enfocar un campo dentro del modal, lo centramos en la zona visible.
+// Esperamos al evento "resize" del visualViewport (que se dispara cuando
+// el teclado termina de abrirse) en vez de un timeout fijo, con un
+// timeout de respaldo por si el teclado ya estaba abierto y no hay resize.
 document.getElementById('cuerpo-modal-producto').addEventListener('focusin', (e) => {
     const el = e.target;
-    if (el.matches('input, textarea, select')) {
-        setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
+    if (!el.matches('input, textarea, select')) return;
+
+    const centrarCampo = () => el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', centrarCampo, { once: true });
+        setTimeout(centrarCampo, 350); // respaldo si el teclado ya estaba abierto
+    } else {
+        setTimeout(centrarCampo, 300);
     }
 });
 
 function cerrarFormulario() {
     modal.classList.remove('open');
+    modal.style.top = '';
     form.reset();
     document.getElementById('imagen').value = '';
     productoEditandoId = null;
@@ -653,6 +700,7 @@ async function editarProducto(id) {
     modal.classList.add('open');
     document.body.classList.add('overflow-hidden');
     document.getElementById('cuerpo-modal-producto').scrollTop = 0;
+    ajustarModalAlViewportVisible();
 }
 
 // Muestra la preview de la imagen del producto (o el placeholder si está vacía/URL inválida)
@@ -746,11 +794,10 @@ function actualizarTodosLosTotalesVariantes() {
     });
 }
 
-// Marca/desmarca una variante como "sin stock". Sigue existiendo y editable,
-// pero se muestra tachada y no seleccionable en la tienda pública.
-function toggleDisponibleVariante(idx) {
-    const v = variantesEnEdicion[idx];
-    v.disponible = v.disponible === false ? true : false;
+// Marca una variante como "con stock" o "sin stock". Sigue existiendo y
+// editable, pero se muestra tachada y no seleccionable en la tienda pública.
+function marcarStockVariante(idx, disponible) {
+    variantesEnEdicion[idx].disponible = disponible;
     renderVariantes();
 }
 
@@ -793,11 +840,10 @@ function renderVariantes() {
                 <span class="variant-total-hint" id="variant-total-${idx}">Precio final: ${formatoPrecio(calcularTotalVariante(idx))}</span>
             </div>
             <div class="variant-cell variant-cell-stock">
-                <button type="button" class="variant-stock-pill ${sinStock ? 'off' : 'on'}"
-                    onclick="toggleDisponibleVariante(${idx})"
-                    title="${sinStock ? 'Sin stock: tocá para marcar que hay stock' : 'Con stock: tocá para marcar que no hay stock'}">
-                    <span class="variant-stock-pill-dot"></span>${sinStock ? 'Sin stock' : 'Con stock'}
-                </button>
+                <div class="variant-stock-btns">
+                    <button type="button" class="variant-stock-btn ${sinStock ? '' : 'activo-on'}" onclick="marcarStockVariante(${idx}, true)"><span class="variant-stock-btn-dot"></span>Con stock</button>
+                    <button type="button" class="variant-stock-btn ${sinStock ? 'activo-off' : ''}" onclick="marcarStockVariante(${idx}, false)"><span class="variant-stock-btn-dot"></span>Sin stock</button>
+                </div>
             </div>
             <div class="variant-cell variant-cell-remove">
                 <button type="button" onclick="quitarFilaVariante(${idx})" title="Quitar variante" class="variant-remove">✕</button>
@@ -1052,9 +1098,9 @@ async function cargarPerfilEmprendedor() {
     document.getElementById('p-ubicacion').value = data.ubicacion || '';
     document.getElementById('p-mapa').value = data.mapa_url || '';
     document.getElementById('p-horario').value = data.horario_atencion || '';
-    document.getElementById('p-instagram').value = data.instagram || '';
+    document.getElementById('p-instagram').value = extraerUsuarioRedSocial(data.instagram || '');
     document.getElementById('p-facebook').value = data.facebook || '';
-    document.getElementById('p-tiktok').value = data.tiktok || '';
+    document.getElementById('p-tiktok').value = extraerUsuarioRedSocial(data.tiktok || '');
     document.getElementById('p-costo-envio').value = data.costo_envio ? formatoPrecioInput(data.costo_envio) : '';
     document.getElementById('p-anuncio').value = data.anuncio || '';
 
@@ -1420,9 +1466,15 @@ async function guardarPerfil() {
         ubicacion: document.getElementById('p-ubicacion').value.trim(),
         mapa_url: document.getElementById('p-mapa').value.trim(),
         horario_atencion: document.getElementById('p-horario').value.trim(),
-        instagram: document.getElementById('p-instagram').value.trim(),
+        instagram: (() => {
+            const usuario = extraerUsuarioRedSocial(document.getElementById('p-instagram').value);
+            return usuario ? `https://instagram.com/${usuario}` : '';
+        })(),
         facebook: document.getElementById('p-facebook').value.trim(),
-        tiktok: document.getElementById('p-tiktok').value.trim(),
+        tiktok: (() => {
+            const usuario = extraerUsuarioRedSocial(document.getElementById('p-tiktok').value);
+            return usuario ? `https://tiktok.com/@${usuario}` : '';
+        })(),
         medios_pago: mediosPagoPerfilSeleccion,
         costo_envio: parsearPrecio(document.getElementById('p-costo-envio').value)
     };
