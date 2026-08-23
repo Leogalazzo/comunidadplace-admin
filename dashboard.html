@@ -1774,6 +1774,47 @@
         </div>
     </div>
 
+    <!-- MODAL: PAGO ACREDITADO / SUSCRIPCIÓN ACTIVADA
+         Reemplaza el mostrarToast(..., 'exito') que tenía un typo (el tipo
+         válido es 'success', no 'exito') y por eso aparecía sin ningún
+         estilo. Un momento como "tu suscripción ya está activa" además
+         merece más presencia que un toast que pasa y se pierde, así que
+         quedó como modal propio, mismo lenguaje visual que
+         #modal-vencimiento pero en verde. -->
+    <div id="modal-pago-exitoso" onclick="if (event.target === this) cerrarModalPagoExitoso()" class="fixed inset-0 z-[90] hidden flex items-center justify-center p-4 sm:p-6">
+        <div class="absolute inset-0 bg-slate-950/80"></div>
+
+        <div class="bg-white w-full max-w-sm rounded-[28px] relative z-10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] overflow-hidden animate-fade-in">
+            <div class="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-500"></div>
+
+            <button type="button" onclick="cerrarModalPagoExitoso()" aria-label="Cerrar" class="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center bg-slate-100/80 text-slate-400 hover:text-slate-700 hover:bg-slate-200 active:scale-90 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+
+            <div class="p-7 sm:p-8 pt-9 text-center">
+                <div class="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-5 bg-gradient-to-br from-emerald-50 to-green-100 text-emerald-500 shadow-inner">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+
+                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500 mb-2">Pago acreditado</p>
+                <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight mb-2.5">¡Tu suscripción ya está activa!</h2>
+                <p id="modal-pago-exitoso-mensaje" class="text-sm text-slate-500 leading-relaxed mb-7">Tu tienda vuelve a mostrarse en la comunidad. Gracias por confiar en nosotros.</p>
+
+                <button
+                    type="button"
+                    onclick="cerrarModalPagoExitoso()"
+                    class="w-full bg-obsidian text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-yellow-400 hover:text-black transition-all duration-200 shadow-lg shadow-slate-900/15 active:scale-95"
+                >
+                    Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- SDK de MercadoPago para el Card Payment Brick -->
     <script src="https://sdk.mercadopago.com/js/v2"></script>
     <script src="supabase-client.js"></script>
