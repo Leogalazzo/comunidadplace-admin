@@ -1668,7 +1668,12 @@
          del banner de arriba (#banner-tienda-bloqueada), que es el que
          refleja el bloqueo real de la tienda en la comunidad. -->
     <div id="modal-vencimiento" onclick="if (event.target === this) cerrarModalVencimiento()" class="fixed inset-0 z-[80] hidden flex items-center justify-center p-4 sm:p-6">
-        <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-md"></div>
+        <!-- Fondo sólido en vez de backdrop-blur: el blur obliga al navegador a
+             re-samplear todo el dashboard detrás en cada frame mientras el modal
+             anima su entrada, lo que se siente como lag (sobre todo en Android
+             gama media). Mismo criterio que #modal-form, que ya usa un fondo
+             sólido semi-transparente sin blur. -->
+        <div class="absolute inset-0 bg-slate-950/80"></div>
 
         <div class="bg-white w-full max-w-sm rounded-[28px] relative z-10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] overflow-hidden animate-fade-in">
             <!-- Franja superior de acento -->
@@ -1708,7 +1713,12 @@
          tarjeta se monta acá mismo, dentro del panel. No se abre ni la
          app ni el navegador de MercadoPago en ningún dispositivo. -->
     <div id="modal-pago-suscripcion" onclick="if (event.target === this) cerrarModalPagoSuscripcion()" class="fixed inset-0 z-[85] hidden flex items-center justify-center p-4 sm:p-6">
-        <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-md"></div>
+        <!-- Sin backdrop-blur: acá es donde más importa, porque justo cuando
+             se abre este modal también se dispara el fetch de config, se crea
+             la instancia de MercadoPago y se monta el iframe del Brick — todo
+             compitiendo por GPU/CPU al mismo tiempo que el blur intentaría
+             recalcularse en cada frame. -->
+        <div class="absolute inset-0 bg-slate-950/80"></div>
 
         <div class="mps-sheet bg-white w-full max-w-md sm:max-w-lg rounded-[28px] relative z-10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] overflow-hidden animate-fade-in flex flex-col">
             <div class="mps-handle"></div>
