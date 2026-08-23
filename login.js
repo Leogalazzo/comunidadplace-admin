@@ -51,7 +51,7 @@ function setEstadoCargando(cargando) {
         if (typeof obtenerPerfilUsuario === 'function') {
             const perfil = await obtenerPerfilUsuario();
             if (perfil) {
-                window.location.href = perfil.rol === 'admin' ? 'admin.html' : 'dashboard.html';
+                window.location.href = perfil.rol === 'admin' ? 'admin' : 'dashboard';
             }
         }
     } catch (e) {
@@ -98,7 +98,7 @@ formLogin.addEventListener('submit', async (e) => {
             .eq('id', data.user.id)
             .single();
 
-        window.location.href = (perfil && perfil.rol === 'admin') ? 'admin.html' : 'dashboard.html';
+        window.location.href = (perfil && perfil.rol === 'admin') ? 'admin' : 'dashboard';
 
     } catch (err) {
         console.error(err);
