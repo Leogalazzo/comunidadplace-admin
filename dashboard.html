@@ -274,15 +274,32 @@
            Cada fila se arma con celdas (.variant-cell-*) en vez de inputs sueltos,
            así en mobile podemos reacomodar el grid (ver media query) sin tocar el
            JS que genera el HTML. */
-        #modal-form .variant-header { display: none; grid-template-columns: 2.3fr 2.3fr 1.7fr 112px 34px; gap: 0.5rem; padding: 0 0.25rem; font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mp-text-muted); }
+        #modal-form .variant-header { display: none; }
+        /* Grid apilado (nombre+valor / precio / stock+borrar) fijo para
+           todos los anchos: el modal nunca supera los 640px de ancho real
+           aunque la ventana sea de escritorio, así que la vieja grilla de
+           5 columnas (2.3fr 2.3fr 1.7fr 112px 34px) terminaba con los
+           botones "Con stock/Sin stock" sin lugar y desbordando encima
+           de la X de borrar variante. Usar siempre el layout apilado
+           evita ese solapamiento. */
         #modal-form .variant-row {
-            display: grid; grid-template-columns: 2.3fr 2.3fr 1.7fr 112px 34px;
-            gap: 0.5rem; align-items: center;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-areas:
+                "nombre valor"
+                "precio precio"
+                "stock remove";
+            gap: 0.45rem; align-items: center;
             background: var(--mp-surface-2); border: 1px solid var(--mp-border); border-radius: var(--mp-radius-sm);
-            padding: 0.5rem; margin-top: 0.5rem; transition: opacity .15s;
+            padding: 0.55rem; margin-top: 0.5rem; transition: opacity .15s;
         }
         #modal-form .variant-row.sin-stock { opacity: 0.75; }
         #modal-form .variant-cell { min-width: 0; }
+        #modal-form .variant-cell-nombre { grid-area: nombre; }
+        #modal-form .variant-cell-valor { grid-area: valor; }
+        #modal-form .variant-cell-precio { grid-area: precio; }
+        #modal-form .variant-cell-stock { grid-area: stock; }
+        #modal-form .variant-cell-remove { grid-area: remove; justify-self: end; align-self: center; }
         #modal-form .variant-row input { padding: 0.5rem 0.6rem; font-size: 0.78rem; width: 100%; }
         #modal-form .variant-cell-precio { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
         #modal-form .variant-total-hint { font-size: 0.62rem; font-weight: 700; color: var(--mp-text-muted); white-space: nowrap; padding-left: 0.15rem; }
@@ -325,9 +342,6 @@
         #modal-form .btn-sm { padding: 0.4rem 0.7rem; font-size: 0.68rem; flex: none; }
 
         /* Responsive: bottom sheet en mobile + fix de teclado/zoom iOS */
-        @media (min-width: 641px) {
-            #modal-form .variant-header { display: grid; }
-        }
         @media (max-width: 640px) {
             #modal-form { padding: 0; align-items: flex-end; }
             /* Altura real: vh en mobile no descuenta la barra de direcciones del navegador,
@@ -389,25 +403,10 @@
             #modal-form .tag-chip { padding: 0.26rem 0.5rem; font-size: 0.65rem; }
             #modal-form .btn { padding: 0.5rem 0.7rem; font-size: 0.66rem; }
             #modal-form .btn-sm { padding: 0.28rem 0.5rem; font-size: 0.6rem; }
-            /* En mobile el grid de 5 columnas quedaba imposible de tocar
-               (celdas de 28-40px). Se reacomoda en 3 filas de a 2 columnas:
-               nombre+valor / precio (ancho completo) / stock+borrar, con
-               harto más lugar para tocar cada cosa. */
-            #modal-form .variant-row {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                grid-template-areas:
-                    "nombre valor"
-                    "precio precio"
-                    "stock remove";
-                gap: 0.45rem;
-                padding: 0.55rem; margin-top: 0.45rem; border-radius: 10px;
-            }
-            #modal-form .variant-cell-nombre { grid-area: nombre; }
-            #modal-form .variant-cell-valor { grid-area: valor; }
-            #modal-form .variant-cell-precio { grid-area: precio; }
-            #modal-form .variant-cell-stock { grid-area: stock; }
-            #modal-form .variant-cell-remove { grid-area: remove; justify-self: end; align-self: center; }
+            /* El grid apilado (nombre+valor / precio / stock+borrar) ya es
+               la base para todos los anchos; acá solo achicamos un poco
+               más el padding para pantallas de celular. */
+            #modal-form .variant-row { padding: 0.55rem; margin-top: 0.45rem; border-radius: 10px; }
             #modal-form .variant-row input { padding: 0.45rem 0.55rem; font-size: 16px; border-radius: 7px; }
             #modal-form .variant-remove { width: 34px; height: 34px; }
             #modal-form .variant-stock-btn { padding: 0.5rem 0.3rem; font-size: 0.6rem; gap: 0.25rem; }
@@ -720,7 +719,7 @@
 
             <!-- Footer Sidebar / Cerrar Sesión (siempre visible) -->
             <div class="pt-6 border-t border-white/10 mt-6 flex-shrink-0">
-                <button onclick="cerrarSesion()" class="w-full flex items-center justify-center gap-2 text-rose-400 hover:text-white hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 px-4 py-3 rounded-xl text-xs uppercase tracking-wider font-bold transition-all">
+                <button onclick="confirmarCerrarSesion()" class="w-full flex items-center justify-center gap-2 text-rose-400 hover:text-white hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 px-4 py-3 rounded-xl text-xs uppercase tracking-wider font-bold transition-all">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                     <span>Cerrar Sesión</span>
                 </button>
