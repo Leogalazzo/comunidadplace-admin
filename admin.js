@@ -160,21 +160,21 @@ function renderEmprendedores() {
             : (e.activo ? 'bg-red-50 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white');
 
         return `
-        <div class="group bg-white rounded-xl sm:rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-xl hover:shadow-slate-900/5 hover:-translate-y-0.5 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer"
+        <div class="group bg-white rounded-xl sm:rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-900/5 hover:-translate-y-0.5 hover:border-slate-300 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer"
             onclick="abrirModalDetalleEmprendedor('${e.id}')">
             <div class="relative aspect-square bg-slate-100 overflow-hidden">
                 ${avatar}
-                <span class="absolute top-1.5 left-1.5 sm:top-3 sm:left-3 text-[8px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-full ${badge.clase}">
+                <span class="absolute top-2 left-2 sm:top-3 sm:left-3 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm ${badge.clase}">
                     ${badge.texto}
                 </span>
             </div>
-            <div class="p-2 sm:p-4 flex flex-col gap-0.5 sm:gap-1.5 flex-1">
-                <span class="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${e.usuarios ? escapeHtml(e.usuarios.usuario) : '-'}</span>
-                <h3 class="font-bold sm:font-extrabold text-slate-900 text-xs sm:text-base leading-snug line-clamp-1">${escapeHtml(e.nombre_tienda)}</h3>
-                <p class="text-[10px] sm:text-xs text-slate-500 font-medium truncate">${e.whatsapp ? escapeHtml(e.whatsapp) : 'Sin WhatsApp cargado'}</p>
-                <div class="mt-auto pt-1.5 sm:pt-2">
+            <div class="p-3 sm:p-4 flex flex-col gap-1 sm:gap-1.5 flex-1">
+                <span class="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${e.usuarios ? escapeHtml(e.usuarios.usuario) : '-'}</span>
+                <h3 class="font-extrabold text-slate-900 text-sm sm:text-base leading-snug line-clamp-1">${escapeHtml(e.nombre_tienda)}</h3>
+                <p class="text-[11px] sm:text-xs text-slate-500 font-semibold truncate">${e.whatsapp ? escapeHtml(e.whatsapp) : 'Sin WhatsApp cargado'}</p>
+                <div class="mt-auto pt-2 sm:pt-2.5">
                     <button onclick="event.stopPropagation(); ${accionBoton}"
-                        class="w-full h-7 sm:h-auto py-0 sm:py-2.5 rounded-lg sm:rounded-xl font-black text-[8px] sm:text-[10px] uppercase tracking-widest transition-colors ${claseBoton}">
+                        class="w-full h-9 sm:h-auto py-0 sm:py-2.5 rounded-lg sm:rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-widest transition-colors ${claseBoton}">
                         ${textoBoton}
                     </button>
                 </div>
@@ -370,7 +370,7 @@ function cerrarModalDetalleEmprendedor() {
 async function activarConPago(id) {
     const confirmado = await confirmarAccion(
         'Se va a activar la tienda ahora mismo y se le va a asignar una suscripción válida por 30 días, como si el pago se hubiera acreditado normalmente. Usalo solo si confirmaste que el pago llegó y el sistema no lo procesó.',
-        { titulo: '¿Activar y asignar el mes?', textoConfirmar: 'Activar y asignar mes', peligro: false }
+        { titulo: '¿Activar y asignar el mes?', textoConfirmar: 'Asignar mes', peligro: false }
     );
     if (!confirmado) return;
 
@@ -463,7 +463,6 @@ async function cargarCategoriasAdmin() {
         <div class="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-sm p-2.5 sm:p-4 flex items-center justify-between gap-2 sm:gap-3 hover:shadow-md transition-shadow">
             <div class="min-w-0">
                 <p class="font-bold sm:font-extrabold text-slate-900 text-sm sm:text-base truncate">${escapeHtml(c.nombre)}</p>
-                <p class="text-[10px] sm:text-xs text-slate-400 truncate">${escapeHtml(c.slug)}</p>
             </div>
             <div class="flex items-center gap-2 sm:gap-3 shrink-0">
                 <button onclick="editarCategoria(${c.id})" class="text-slate-400 hover:text-slate-700 font-black text-[8px] sm:text-[10px] uppercase tracking-widest transition-colors">Editar</button>
