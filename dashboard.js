@@ -376,6 +376,12 @@ function mostrarSeccion(seccionId) {
     if (seccionId === 'qr') renderFormatoQR(formatoQRActivo);
     // Igual con la credencial: se arma al entrar, con los datos ya cargados.
     if (seccionId === 'credencial') renderCredencialQR();
+
+    // Al cambiar de sección siempre arrancamos scrolleados arriba del todo.
+    // Sin esto, el scroll de la ventana quedaba donde estaba en la sección
+    // anterior (ej: si te ibas hasta el final de "Mis datos", entrabas a
+    // "Mis productos" ya scrolleado al final).
+    window.scrollTo(0, 0);
 }
 
 async function renderProductos(mostrarSpinner = false) {
@@ -459,8 +465,8 @@ function pintarGridProductos() {
                     <span class="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white/90"></span>
                     ${p.activo ? 'Visible' : 'Sin stock'}
                 </span>
-                <button onclick="toggleDestacadoProducto('${p.id}', ${!!p.destacado})" title="${p.destacado ? 'Quitar de destacados' : 'Marcar como destacado'}"
-                    class="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-all backdrop-blur-sm ${p.destacado ? 'bg-yellow-400 text-black shadow-md shadow-yellow-400/50' : 'bg-black/35 text-white/85 hover:bg-black/55'}">
+                <button onclick="${(p.activo || p.destacado) ? `toggleDestacadoProducto('${p.id}', ${!!p.destacado})` : ''}" ${(p.activo || p.destacado) ? '' : 'disabled'} title="${p.activo ? (p.destacado ? 'Quitar de destacados' : 'Marcar como destacado') : (p.destacado ? 'Quitar de destacados' : 'No disponible: sin stock')}"
+                    class="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-all backdrop-blur-sm ${p.destacado ? 'bg-yellow-400 text-black shadow-md shadow-yellow-400/50' : (p.activo ? 'bg-black/35 text-white/85 hover:bg-black/55' : 'bg-black/20 text-white/40 cursor-not-allowed')}">
                     <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="${p.destacado ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.8">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.6l2.47 5.15 5.58.8-4.03 4.03.95 5.72L12 16.5l-5 2.8.95-5.72-4.03-4.03 5.58-.8L12 3.6z"/>
                     </svg>
@@ -936,6 +942,15 @@ form.addEventListener('submit', async (e) => {
         medios_pago: mediosPagoProductoSeleccion
     };
 
+    // Si el producto queda sin stock (y por lo tanto se oculta), no tiene
+    // sentido que siga destacado: se lo sacamos también.
+    const productoActual = productoEditandoId ? productosCache.find(x => x.id === productoEditandoId) : null;
+    const seQuitaDestacadoPorSinStock = todasLasVariantesSinStock && !!productoActual?.destacado;
+    if (seQuitaDestacadoPorSinStock) {
+        payload.destacado = false;
+    }
+
+
     // "Nuevo" se marca a mano, pero le ponemos fecha para que no quede pegado
     // para siempre: si se acaba de activar (antes no lo estaba), arrancamos
     // el conteo de 5 días desde ahora. Si ya estaba activo, no tocamos la
@@ -992,7 +1007,13 @@ form.addEventListener('submit', async (e) => {
         await renderProductos();
 
         if (seOcultoAutomaticamente) {
-            mostrarToast('Producto guardado, pero se ocultó de la tienda porque todas sus variantes están sin stock.', 'info', 5500);
+            mostrarToast(
+                seQuitaDestacadoPorSinStock
+                    ? 'Producto guardado, pero se ocultó y se quitó de destacados porque todas sus variantes están sin stock.'
+                    : 'Producto guardado, pero se ocultó de la tienda porque todas sus variantes están sin stock.',
+                'info', 5500);
+        } else if (seQuitaDestacadoPorSinStock) {
+            mostrarToast('Producto actualizado. Se lo quitó de destacados porque no tiene stock.', 'info', 5500);
         } else {
             mostrarToast(productoEditandoId ? 'Producto actualizado.' : 'Producto creado.', 'success');
         }
@@ -1044,15 +1065,29 @@ async function eliminarProducto(id) {
 // sincronizarDisponibilidadCarrito en main.js / emprendedor.js).
 async function toggleActivoProducto(id, activoActual) {
     const nuevoEstado = !activoActual;
-    const { error } = await supabase.from('productos').update({ activo: nuevoEstado }).eq('id', id);
+    // Si se oculta el producto (queda sin stock/no disponible) y estaba
+    // destacado, le sacamos el destacado: no tiene sentido que algo no
+    // disponible siga apareciendo primero en el perfil público.
+    const item = productosCache.find(p => String(p.id) === String(id));
+    const debeQuitarDestacado = !nuevoEstado && item?.destacado;
+
+    const { error } = await supabase.from('productos')
+        .update(debeQuitarDestacado ? { activo: nuevoEstado, destacado: false } : { activo: nuevoEstado })
+        .eq('id', id);
     if (error) { mostrarToast('No se pudo actualizar la visibilidad del producto.', 'error'); console.error(error); return; }
 
     // Actualizamos el estado en memoria y repintamos al toque, sin volver
     // a pedirle la lista completa a Supabase (eso evita el parpadeo/spinner
     // que daba sensación de que la página se recargaba).
-    const item = productosCache.find(p => String(p.id) === String(id));
-    if (item) item.activo = nuevoEstado;
+    if (item) {
+        item.activo = nuevoEstado;
+        if (debeQuitarDestacado) item.destacado = false;
+    }
     pintarGridProductos();
+
+    if (debeQuitarDestacado) {
+        mostrarToast('Producto ocultado y quitado de destacados.', 'info');
+    }
 }
 
 // Máximo de productos que se pueden marcar como "Destacados": aparecen
@@ -1063,6 +1098,12 @@ async function toggleDestacadoProducto(id, destacadoActual) {
     const nuevoEstado = !destacadoActual;
 
     if (nuevoEstado) {
+        const producto = productosCache.find(p => String(p.id) === String(id));
+        if (producto && !producto.activo) {
+            mostrarToast('No podés destacar un producto sin stock. Reactivalo primero.', 'error');
+            return;
+        }
+
         const cantidadActual = productosCache.filter(p => p.destacado).length;
         if (cantidadActual >= MAX_PRODUCTOS_DESTACADOS) {
             mostrarToast(`Ya tenés ${MAX_PRODUCTOS_DESTACADOS} productos destacados. Sacá uno para agregar otro.`, 'error');
