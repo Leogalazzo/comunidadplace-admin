@@ -499,6 +499,16 @@ async function renderFormatoQR(formato) {
         </div>`;
 }
 
+// true solo en celular/tablet real (no en desktop, aunque el navegador
+// exponga navigator.share como Edge o Chrome en Windows, o aunque la PC
+// tenga pantalla táctil / trackpad que el navegador reporte como "coarse").
+// Nos basamos únicamente en el userAgent: es la única señal que distingue
+// de forma confiable un dispositivo mobile real de una PC con touch/trackpad,
+// que es justamente el caso que hacía aparecer el share sheet en desktop.
+function esMobile() {
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
 async function descargarTarjetaQR() {
     const btn = document.getElementById('btn-descargar-qr');
     const label = document.getElementById('qr-btn-guardar-label');
@@ -537,7 +547,7 @@ async function descargarTarjetaQR() {
         const blob = await (await fetch(dataUrl)).blob();
         const archivo = new File([blob], nombreArchivo, { type: 'image/png' });
 
-        if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+        if (esMobile() && navigator.canShare && navigator.canShare({ files: [archivo] })) {
             await navigator.share({
                 files: [archivo],
                 title: 'Credencial QR',
