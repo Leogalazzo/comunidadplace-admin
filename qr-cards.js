@@ -196,7 +196,7 @@ function construirTarjetaHTML(formato, { nombre, logoHtml, qr, host, paleta, fue
             <div class="w-[480px] h-[600px] flex flex-col overflow-hidden relative" style="background:${acento}; ${estiloFuente} ${estiloPuntos('rgba(11,12,16,0.12)', 1.6, 15)}">
                 <div class="relative px-7 pt-6 pb-11 flex items-center gap-2.5" style="background:#0b0c10; clip-path: polygon(0 0, 100% 0, 100% 72%, 0 100%);">
                     <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${acento};"></span>
-                    <span class="text-white text-[15px] font-extrabold uppercase tracking-tight leading-none whitespace-nowrap">Comunidad Place</span>
+                    <span class="text-white text-[15px] font-extrabold uppercase tracking-tight leading-none whitespace-nowrap">Comunidad Online</span>
                 </div>
 
                 <div class="flex-1 flex flex-col items-center px-7 -mt-7 relative z-10">
@@ -250,7 +250,7 @@ function construirTarjetaHTML(formato, { nombre, logoHtml, qr, host, paleta, fue
 
             <div class="relative flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full" style="background:${acento};"></span>
-                <span class="text-xs font-extrabold uppercase tracking-[0.28em] whitespace-nowrap" style="color:${acento};">Comunidad Place</span>
+                <span class="text-xs font-extrabold uppercase tracking-[0.28em] whitespace-nowrap" style="color:${acento};">Comunidad Online</span>
             </div>
 
             <!-- Título en dos líneas fijas y cortas: cada línea es su propio bloque
