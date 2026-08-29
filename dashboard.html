@@ -44,6 +44,16 @@
         }
     </script>
     <style>
+        /* Con "letra grande" activada en el celular (accesibilidad), algunos
+           navegadores móviles además aplican su propio "font boosting" (agrandan
+           el texto todavía más, de forma pareja pero sin que el layout se entere)
+           por encima del ajuste que ya hizo el sistema operativo. Esto puede hacer
+           que un texto crezca más de lo esperado y termine metiéndose debajo de
+           elementos con posición fija, como el botón de cerrar del sidebar.
+           Desactivarlo no afecta el ajuste de letra grande del sistema ni el
+           zoom con los dedos: sólo evita ese agrandado extra e impredecible del
+           navegador. */
+        html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         @keyframes fadeIn { 
             from { opacity: 0; transform: translateY(8px); } 
@@ -645,16 +655,23 @@
         <!-- OVERLAY MOBILE -->
         <div id="sidebar-overlay" onclick="cerrarSidebarMobile()" class="hidden fixed inset-0 bg-black/70 z-30 md:hidden"></div>
 
-        <!-- SIDEBAR -->
-        <aside id="sidebar" class="fixed md:sticky inset-y-0 left-0 md:top-0 md:h-screen w-72 max-w-[85vw] -translate-x-full md:translate-x-0 transition-transform duration-300 ease-out overflow-y-auto bg-obsidian text-white p-6 md:p-8 flex flex-col border-r border-white/5 z-40 shadow-2xl">
+        <!-- SIDEBAR. El scroll vive en el wrapper interno (ver más abajo),
+             no acá: así el footer de "Cerrar Sesión" queda siempre debajo,
+             en vez de que el contenido de arriba (que puede crecer mucho con
+             letra grande + pantalla chica) se desborde visualmente encima
+             de él. -->
+        <aside id="sidebar" class="fixed md:sticky inset-y-0 left-0 md:top-0 md:h-screen w-72 max-w-[85vw] -translate-x-full md:translate-x-0 transition-transform duration-300 ease-out overflow-hidden bg-obsidian text-white p-6 md:p-8 flex flex-col border-r border-white/5 z-40 shadow-2xl">
             <button onclick="cerrarSidebarMobile()" aria-label="Cerrar menú" class="md:hidden absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition">
                 ✕
             </button>
-            <div class="flex-1 flex flex-col min-h-0">
-                <!-- Encabezado & Logo -->
-                <div class="flex items-center gap-3 mb-6">
+            <div class="flex-1 flex flex-col min-h-0 overflow-y-auto -mr-2 pr-2">
+                <!-- Encabezado & Logo. pr-12 en mobile reserva el espacio del
+                     botón ✕ (que es position:absolute y no participa del flex
+                     de esta fila), para que con "letra grande" el título crezca
+                     y baje de línea en vez de meterse debajo del botón. -->
+                <div class="flex items-center gap-3 mb-6 pr-12 md:pr-0">
                     <img src="https://res.cloudinary.com/dloroyhev/image/upload/v1786766537/jbsomfdmmovs2soin72l.webp" alt="Comunidad Emprendedora" class="w-10 h-10 flex-shrink-0 object-contain">
-                    <div class="text-lg sm:text-xl font-black tracking-tight uppercase leading-tight">
+                    <div class="min-w-0 text-lg sm:text-xl font-black tracking-tight uppercase leading-tight break-words">
                         <span class="text-yellow-400">Comunidad Emprendedora</span>
                     </div>
                 </div>
@@ -708,11 +725,23 @@
                             <span class="flex-1">Ayuda y pagos</span>
                             <svg class="w-4 h-4 opacity-0 group-hover:opacity-60 group-hover:translate-x-0.5 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
                         </button>
-                        <a id="link-ir-a-mi-perfil" href="index.html" target="_blank" rel="noopener" class="flex items-center gap-3 text-slate-400 hover:text-yellow-400 hover:bg-white/5 px-4 py-3 rounded-xl transition-colors text-sm font-semibold group">
-                            <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V10m-9 11h.01"/></svg>
-                            <span class="flex-1">Ir a mi perfil</span>
-                            <svg class="w-4 h-4 transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                        </a>
+                        <div class="pt-1">
+                            <p class="px-4 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">Compartir perfil</p>
+                            <div class="grid grid-cols-2 gap-2 px-4">
+                                <button type="button" onclick="copiarLinkPerfil()" class="flex flex-col items-center justify-center gap-1.5 bg-white/[0.04] hover:bg-white/[0.08] active:bg-white/[0.08] border border-white/10 text-slate-300 hover:text-white rounded-xl py-3 transition-all active:scale-95">
+                                    <span class="w-8 h-8 rounded-lg bg-yellow-400/10 flex items-center justify-center flex-shrink-0">
+                                        <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h8a2 2 0 012 2v9a2 2 0 01-2 2H8a2 2 0 01-2-2V9a2 2 0 012-2zm0 0V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                                    </span>
+                                    <span class="text-[11.5px] font-bold leading-none">Copiar link</span>
+                                </button>
+                                <a id="link-ir-a-mi-perfil" href="index.html" target="_blank" rel="noopener" class="flex flex-col items-center justify-center gap-1.5 bg-white/[0.04] hover:bg-white/[0.08] active:bg-white/[0.08] border border-white/10 text-slate-300 hover:text-white rounded-xl py-3 transition-all active:scale-95">
+                                    <span class="w-8 h-8 rounded-lg bg-yellow-400/10 flex items-center justify-center flex-shrink-0">
+                                        <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                    </span>
+                                    <span class="text-[11.5px] font-bold leading-none">Ver perfil</span>
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </nav>
             </div>
@@ -1090,7 +1119,7 @@
                             <div class="flex items-center justify-between gap-3 bg-yellow-50 border border-yellow-200 rounded-xl sm:rounded-2xl p-3.5 mb-2.5">
                                 <div class="min-w-0">
                                     <p class="text-[10px] font-bold uppercase tracking-wider text-yellow-700">Monto a transferir</p>
-                                    <p class="font-mono font-bold text-xs sm:text-sm text-slate-900">$</p>
+                                    <p class="font-mono font-bold text-xs sm:text-sm text-slate-900">$20.000</p>
                                 </div>
                             </div>
 
@@ -1137,13 +1166,13 @@
                         </div>
 
                         <!-- Botones grandes, apilados en mobile y en fila en desktop.
-                             TODO: reemplazar el XXXXXXXXXX de cada href/número por el
-                             número de WhatsApp real, con característica y sin el "+"
-                             ni espacios (formato wa.me, ej: 5493644XXXXXX). El botón
-                             "Informar pago" usa el mismo número que "Escribirme a mí"
-                             (asumiendo que sos vos quien chequea los comprobantes). -->
+                             Números de WhatsApp reales (formato wa.me: 549 + característica
+                             + número, sin "+" ni espacios): soporte 5493644539325,
+                             Comunidad Emprendedora 5493735533008. El botón "Informar pago"
+                             usa el número de Comunidad Emprendedora (ver informarPagoWhatsapp
+                             en dashboard.js). -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                            <a href="https://wa.me/549XXXXXXXXXX" target="_blank" rel="noopener"
+                            <a href="https://wa.me/5493644539325" target="_blank" rel="noopener"
                                 class="flex items-center gap-3 sm:gap-4 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-2xl p-4 sm:p-5 transition-all active:scale-[0.97] group">
                                 <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-emerald-500/20">
                                     <svg class="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.29.173-1.414-.074-.124-.272-.198-.57-.347z"/><path d="M12.001 2C6.478 2 2 6.478 2 12c0 1.876.52 3.63 1.42 5.13L2 22l4.994-1.396A9.947 9.947 0 0012 22c5.523 0 10-4.478 10-10S17.523 2 12 2zm0 18.13a8.1 8.1 0 01-4.135-1.13l-.297-.176-3.06.856.822-2.997-.194-.31A8.113 8.113 0 013.87 12c0-4.487 3.643-8.13 8.13-8.13 4.487 0 8.13 3.643 8.13 8.13 0 4.487-3.643 8.13-8.13 8.13z"/></svg>
@@ -1155,7 +1184,7 @@
                                 <svg class="w-4 h-4 text-emerald-600 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
                             </a>
 
-                            <a href="https://wa.me/549YYYYYYYYYY" target="_blank" rel="noopener"
+                            <a href="https://wa.me/5493735533008" target="_blank" rel="noopener"
                                 class="flex items-center gap-3 sm:gap-4 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-2xl p-4 sm:p-5 transition-all active:scale-[0.97] group">
                                 <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-emerald-500/20">
                                     <svg class="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.29.173-1.414-.074-.124-.272-.198-.57-.347z"/><path d="M12.001 2C6.478 2 2 6.478 2 12c0 1.876.52 3.63 1.42 5.13L2 22l4.994-1.396A9.947 9.947 0 0012 22c5.523 0 10-4.478 10-10S17.523 2 12 2zm0 18.13a8.1 8.1 0 01-4.135-1.13l-.297-.176-3.06.856.822-2.997-.194-.31A8.113 8.113 0 013.87 12c0-4.487 3.643-8.13 8.13-8.13 4.487 0 8.13 3.643 8.13 8.13 0 4.487-3.643 8.13-8.13 8.13z"/></svg>
