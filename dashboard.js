@@ -338,7 +338,7 @@ async function copiarTexto(texto, boton) {
 function informarPagoWhatsapp() {
     const usuario = perfilActual ? perfilActual.usuario : '';
     const texto = `Hola! Quiero informar el pago de mi suscripción por transferencia.\n\nUsuario: @${usuario}\n\nTe mando el comprobante 👇`;
-    const url = `https://wa.me/549XXXXXXXXXX?text=${encodeURIComponent(texto)}`;
+    const url = `https://wa.me/5493735533008?text=${encodeURIComponent(texto)}`;
     window.open(url, '_blank', 'noopener');
 }
 
@@ -531,6 +531,12 @@ function copiarLinkProducto(id) {
 // (Cloudflare), donde realmente está emprendedor.html.
 function urlPerfilPublico() {
     return `${SITIO_PUBLICO}/emprendedor.html?t=${encodeURIComponent(perfilActual.usuario)}`;
+}
+
+// Copia el link público del perfil (el mismo que abre "Ver perfil") al
+// portapapeles, para compartirlo directo por WhatsApp, redes, etc.
+function copiarLinkPerfil() {
+    copiarAlPortapapeles(urlPerfilPublico(), 'Link de tu perfil copiado. ¡Ya lo podés compartir!');
 }
 
 // ============================================================
