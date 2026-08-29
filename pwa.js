@@ -50,16 +50,32 @@
         toast.className = 'pwa-update-toast';
         toast.innerHTML =
             '<span class="pwa-update-toast__icon">' +
-                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                '<img class="pwa-update-toast__icon-img" src="icon-192.png" alt="">' +
+                '<svg class="pwa-update-toast__icon-fallback" viewBox="0 0 24 24" fill="none" stroke="#facc15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
                     '<path d="M21 12a9 9 0 1 1-2.64-6.36"></path><polyline points="21 3 21 9 15 9"></polyline>' +
                 '</svg>' +
+                '<span class="pwa-update-toast__dot"></span>' +
             '</span>' +
             '<span class="pwa-update-toast__text">' +
-                '<span class="pwa-update-toast__title">Nueva versión de la app</span>' +
-                '<span class="pwa-update-toast__desc">Actualizá para ver los últimos cambios</span>' +
-            '</span>' +
-            '<button type="button">Actualizar</button>';
+                '<span class="pwa-update-toast__title">Actualización disponible</span>' +
+                '<span class="pwa-update-toast__desc">Se hicieron cambios en la app. Actualizá para seguir usándola con la última versión.</span>' +
+                '<span class="pwa-update-toast__actions">' +
+                    '<button type="button">Actualizar ahora</button>' +
+                '</span>' +
+            '</span>';
         document.body.appendChild(toast);
+
+        // Si el icon-192.png no existe (ej. todavía no se subió), mostramos
+        // el ícono de recarga en su lugar en vez de dejar la imagen rota
+        // superpuesta con el SVG de reserva.
+        const iconImg = toast.querySelector('.pwa-update-toast__icon-img');
+        const iconFallback = toast.querySelector('.pwa-update-toast__icon-fallback');
+        if (iconImg) {
+            iconImg.addEventListener('error', () => {
+                iconImg.remove();
+                if (iconFallback) iconFallback.style.display = 'block';
+            }, { once: true });
+        }
 
         requestAnimationFrame(() => toast.classList.add('pwa-update-toast-show'));
 
