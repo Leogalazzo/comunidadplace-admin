@@ -163,6 +163,39 @@ function verificarTerminos() {
     document.body.classList.add('overflow-hidden');
 }
 
+// URL del PDF del instructivo compartido por Google Drive.
+// Reemplazá FILE_ID por el ID del archivo (lo sacás del link para compartir de Drive:
+// https://drive.google.com/file/d/FILE_ID/view -> copiá solo esa parte FILE_ID).
+// Asegurate de que el archivo esté compartido como "Cualquier persona con el enlace puede ver".
+const INSTRUCTIVO_DRIVE_FILE_ID = '1198gPlSr9h1pZG9mGOf92Oe0C99VOWCV';
+const INSTRUCTIVO_DRIVE_URL_VER = `https://drive.google.com/file/d/${INSTRUCTIVO_DRIVE_FILE_ID}/view`;
+const INSTRUCTIVO_DRIVE_URL_PREVIEW = `https://drive.google.com/file/d/${INSTRUCTIVO_DRIVE_FILE_ID}/preview`;
+
+function abrirInstructivo() {
+    document.getElementById('iframe-instructivo').src = INSTRUCTIVO_DRIVE_URL_PREVIEW;
+    document.getElementById('link-instructivo-nueva-pestana').href = INSTRUCTIVO_DRIVE_URL_VER;
+    document.getElementById('modal-instructivo').classList.remove('hidden');
+    // En iOS Safari, overflow-hidden en el body no siempre bloquea el scroll de fondo
+    // (rubber-banding), así que además fijamos la posición del body.
+    const scrollY = window.scrollY;
+    document.body.dataset.scrollY = scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    document.body.classList.add('overflow-hidden');
+}
+
+function cerrarInstructivo() {
+    document.getElementById('modal-instructivo').classList.add('hidden');
+    document.getElementById('iframe-instructivo').src = ''; // corta la carga/reproducción al cerrar
+    const scrollY = parseInt(document.body.dataset.scrollY || '0', 10);
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    document.body.classList.remove('overflow-hidden');
+    window.scrollTo(0, scrollY);
+}
+
 async function responderTerminos(acepto) {
     const btnAceptar = document.getElementById('btn-aceptar-terminos');
     const btnRechazar = document.getElementById('btn-rechazar-terminos');
