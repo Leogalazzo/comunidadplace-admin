@@ -902,7 +902,7 @@
                                 <input type="text" id="p-nombre" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 text-slate-900 font-semibold text-sm focus:bg-white focus:border-obsidian focus:ring-4 focus:ring-yellow-400/20 outline-none transition-all">
                             </div>
 
-                            <div>
+                            <div id="campo-banner-portada">
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
                                     Banner / Portada <span class="text-slate-400 font-normal lowercase">(opcional)</span>
                                 </label>
@@ -927,7 +927,7 @@
                                 </div>
                             </div>
 
-                            <div>
+                            <div id="campo-descripcion-bio">
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
                                     Descripción / Bio de la marca
                                 </label>
@@ -967,8 +967,8 @@
                         </div>
                     </div>
 
-                    <!-- CONTACTO Y UBICACIÓN -->
-                    <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-slate-200/80 shadow-sm">
+                    <!-- CONTACTO Y UBICACIÓN (oculto para cuentas "solo beneficios": no reciben pedidos por acá) -->
+                    <div id="card-contacto-ubicacion" class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-slate-200/80 shadow-sm">
                         <div class="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-6">
                             <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-400/15 text-emerald-700 flex items-center justify-center flex-shrink-0">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="2.5"/></svg>
@@ -1012,8 +1012,8 @@
                         </div>
                     </div>
 
-                    <!-- REDES SOCIALES -->
-                    <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-slate-200/80 shadow-sm">
+                    <!-- REDES SOCIALES (oculto para cuentas "solo beneficios") -->
+                    <div id="card-redes-sociales" class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-slate-200/80 shadow-sm">
                         <div class="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-6">
                             <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-sky-400/15 text-sky-700 flex items-center justify-center flex-shrink-0">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342a4 4 0 100-2.684m0 2.684a4 4 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a4 4 0 105.367-1.925 4 4 0 00-5.367 1.925zm0 9.316a4 4 0 105.368 1.925 4 4 0 00-5.368-1.925z"/></svg>
@@ -1139,7 +1139,7 @@
                             <div class="flex items-center justify-between gap-3 bg-yellow-50 border border-yellow-200 rounded-xl sm:rounded-2xl p-3.5 mb-2.5">
                                 <div class="min-w-0">
                                     <p class="text-[10px] font-bold uppercase tracking-wider text-yellow-700">Monto a transferir</p>
-                                    <p class="font-mono font-bold text-xs sm:text-sm text-slate-900">$20.000</p>
+                                    <p id="susc-monto-transferencia" class="font-mono font-bold text-xs sm:text-sm text-slate-900">$20.000</p>
                                 </div>
                             </div>
 
