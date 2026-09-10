@@ -167,21 +167,47 @@ function renderEmprendedores() {
                 <span class="absolute top-2 left-2 sm:top-3 sm:left-3 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm ${badge.clase}">
                     ${badge.texto}
                 </span>
+                ${e.solo_beneficios ? `<span class="absolute top-2 right-2 sm:top-3 sm:right-3 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm bg-purple-500/95 text-white">Solo beneficios</span>` : ''}
             </div>
             <div class="p-3 sm:p-4 flex flex-col gap-1 sm:gap-1.5 flex-1">
                 <span class="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${e.usuarios ? escapeHtml(e.usuarios.usuario) : '-'}</span>
                 <h3 class="font-extrabold text-slate-900 text-sm sm:text-base leading-snug line-clamp-1">${escapeHtml(e.nombre_tienda)}</h3>
                 <p class="text-[11px] sm:text-xs text-slate-500 font-semibold truncate">${e.whatsapp ? escapeHtml(e.whatsapp) : 'Sin WhatsApp cargado'}</p>
-                <div class="mt-auto pt-2 sm:pt-2.5">
+                <div class="mt-auto pt-2 sm:pt-2.5 flex flex-col gap-1.5">
                     <button onclick="event.stopPropagation(); ${accionBoton}"
                         class="w-full h-9 sm:h-auto py-0 sm:py-2.5 rounded-lg sm:rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-widest transition-colors ${claseBoton}">
                         ${textoBoton}
+                    </button>
+                    <button onclick="event.stopPropagation(); toggleSoloBeneficios('${e.id}', ${!!e.solo_beneficios})"
+                        class="w-full h-9 sm:h-auto py-0 sm:py-2.5 rounded-lg sm:rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-widest transition-colors bg-purple-50 text-purple-600 hover:bg-purple-500 hover:text-white">
+                        ${e.solo_beneficios ? 'Volver a cuenta vendedora' : 'Pasar a solo beneficios'}
                     </button>
                 </div>
             </div>
         </div>
     `;
     }).join('');
+}
+
+// Cambia si un comercio es "vendedor" (aparece en la vidriera pública y
+// puede cargar productos) o "solo beneficios" (sólo figura para dar
+// descuentos: no vende nada, y su panel se limita a datos/beneficios/soporte).
+// Pensado para comercios que se postularon como "comercio_membresia".
+async function toggleSoloBeneficios(id, actual) {
+    const nuevoValor = !actual;
+    const confirmado = await confirmarAccion(
+        nuevoValor
+            ? 'El comercio dejará de aparecer en la vidriera pública para vender y su panel quedará limitado a sus datos, beneficios y soporte.'
+            : 'El comercio va a poder volver a cargar productos y aparecer en la vidriera pública para vender.',
+        { titulo: nuevoValor ? '¿Pasar a "solo beneficios"?' : '¿Volver a cuenta vendedora?', textoConfirmar: 'Confirmar' }
+    );
+    if (!confirmado) return;
+
+    const { error } = await supabase.from('emprendedores').update({ solo_beneficios: nuevoValor }).eq('id', id);
+    if (error) { mostrarToast('No se pudo actualizar la cuenta.', 'error'); console.error(error); return; }
+
+    mostrarToast(nuevoValor ? 'Comercio pasado a "solo beneficios".' : 'Comercio vuelto a cuenta vendedora.', 'success');
+    await cargarEmprendedores();
 }
 
 function abrirModalDetalleEmprendedor(id) {
@@ -446,6 +472,114 @@ document.getElementById('form-bloqueo').addEventListener('submit', async (e) => 
     await cargarEmprendedores();
 });
 
+// ============================================================
+// ÍCONOS DE CATEGORÍA (selector en el modal)
+// ============================================================
+// Misma librería y mismas claves que usa el sitio público (main.js) para
+// dibujar la fila de categorías con ícono. Si acá se agrega/saca una clave,
+// hay que reflejarlo también en CP_ICONOS_CATEGORIA de main.js para que el
+// ícono elegido en el admin se vea igual en la tienda.
+const CP_ICONOS_CATEGORIA = {
+    ropa: '<path d="M9 4 12 6l3-2 4 3-2 3-2-1v11H8V10L6 11 4 8 9 4Z"></path>',
+    calzado: '<path d="M3 17v-2.5c0-1 .6-1.9 1.5-2.3L10 9l3-3 2 2-2 2 4.3 1.3c1.6.5 2.7 2 2.7 3.7V17a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"></path><path d="M3 14h18"></path>',
+    accesorios: '<path d="M6 3h12l3 5-9 13L3 8Z"></path><path d="M3 8h18"></path><path d="M9 3l3 5 3-5"></path>',
+    belleza: '<path d="M12 3l1.4 4.2L18 9l-4.6 1.8L12 15l-1.4-4.2L6 9l4.6-1.8L12 3Z"></path><path d="M19 15.5l.6 1.8 1.9.7-1.9.7-.6 1.8-.6-1.8-1.9-.7 1.9-.7.6-1.8Z"></path>',
+    hogar: '<path d="M3 11 12 4l9 7"></path><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"></path>',
+    velas: '<path d="M9 21h6"></path><path d="M10 21v-9a2 2 0 0 1 4 0v9"></path><path d="M12 10c-1.3-1.2-1.3-2.9 0-4.1 1.3 1.2 1.3 2.9 0 4.1Z"></path>',
+    comida: '<path d="M7 3v7a2 2 0 0 0 4 0V3"></path><path d="M9 10v11"></path><path d="M17 3c-1.7 0-3 2.2-3 5s1.3 5 3 5v8"></path>',
+    dulces: '<path d="M6 12h12l-1.4 7.5a2 2 0 0 1-2 1.5H9.4a2 2 0 0 1-2-1.5L6 12Z"></path><path d="M8 12a4 4 0 0 1 8 0"></path><path d="M12 8V3"></path>',
+    bebidas: '<path d="M6 3h12l-1.2 12.5a3 3 0 0 1-3 2.5h-3.6a3 3 0 0 1-3-2.5L6 3Z"></path><path d="M9 21h6"></path><path d="M12 18v3"></path>',
+    tecnologia: '<rect x="6" y="2" width="12" height="20" rx="2"></rect><path d="M11 18h2"></path>',
+    papeleria: '<path d="M3 5c3 0 6 1 9 3 3-2 6-3 9-3v13c-3 0-6 1-9 3-3-2-6-3-9-3V5Z"></path><path d="M12 8v13"></path>',
+    mascotas: '<circle cx="7" cy="9.5" r="1.6"></circle><circle cx="12" cy="6.5" r="1.6"></circle><circle cx="17" cy="9.5" r="1.6"></circle><path d="M12 12c-3 0-5.5 2-5.5 4.5S8.7 21 12 21s5.5-1.8 5.5-4.5S15 12 12 12Z"></path>',
+    juguetes: '<rect x="3" y="10" width="7" height="7" rx="1"></rect><rect x="14" y="10" width="7" height="7" rx="1"></rect><path d="M7 10V6.5a3.5 3.5 0 0 1 7 0V10"></path>',
+    arte: '<path d="M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 2-2 2 2 0 0 1 2-2h1a3 3 0 0 0 3-3 9 9 0 0 0-9-11Z"></path><circle cx="7.5" cy="10.5" r="1"></circle><circle cx="10.5" cy="7" r="1"></circle><circle cx="15" cy="8" r="1"></circle>',
+    deportes: '<path d="M4 9v6"></path><path d="M20 9v6"></path><path d="M7 7v10"></path><path d="M17 7v10"></path><path d="M7 12h10"></path>',
+    plantas: '<path d="M5 21c9 0 14-6 14-14 0-1 0-2-.2-3-6 0-11 4-13 9-1 2-1 5-.8 8Z"></path><path d="M5 21c2-4 5-7 9-9"></path>',
+    regalos: '<rect x="3" y="9" width="18" height="4" rx="1"></rect><path d="M5 13v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"></path><path d="M12 9v12"></path><path d="M12 9C10 5 6 5 6 7.5S9 9 12 9Z"></path><path d="M12 9c2-4 6-4 6-1.5S15 9 12 9Z"></path>',
+    salud: '<circle cx="12" cy="12" r="9"></circle><path d="M12 8v8M8 12h8"></path>',
+    limpieza: '<path d="M9 3h4l1 3h2a1 1 0 0 1 1 1v2l2 2"></path><path d="M9 6h4v3H8a2 2 0 0 0-2 2v9a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-9a2 2 0 0 0-2-2h-1V6"></path>',
+    termo: '<path d="M9 2h6v3H9z"></path><rect x="7" y="5" width="10" height="16" rx="3"></rect><path d="M7 11h10"></path>',
+    mate: '<path d="M8 10a4 4 0 0 0 4 6 4 4 0 0 0 4-6c0-2.5-1.5-4-2-6H10c-.5 2-2 3.5-2 6Z"></path><path d="M14 4l6-2"></path>',
+    perfumeria: '<path d="M10 2h4v3h-4z"></path><rect x="8" y="6" width="8" height="15" rx="2"></rect><path d="M8 11h8"></path>',
+    bolsos: '<path d="M6 8h12l1 12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L6 8Z"></path><path d="M9 8V6a3 3 0 0 1 6 0v2"></path>',
+    anteojos: '<circle cx="6.5" cy="13" r="3.5"></circle><circle cx="17.5" cy="13" r="3.5"></circle><path d="M10 13h4"></path><path d="M3 12l1.5-4h4"></path><path d="M21 12l-1.5-4h-4"></path>',
+    relojes: '<circle cx="12" cy="12" r="6"></circle><path d="M12 9v3l2 2"></path><path d="M9 2h6l-1 4h-4z"></path><path d="M9 22h6l-1-4h-4z"></path>',
+    flores: '<circle cx="12" cy="7" r="2.2"></circle><circle cx="7.5" cy="10" r="2.2"></circle><circle cx="16.5" cy="10" r="2.2"></circle><circle cx="12" cy="12" r="1.6"></circle><path d="M12 14v7"></path>',
+    libros: '<path d="M12 6c-2-1.5-5-2-8-1v13c3-1 6-.5 8 1 2-1.5 5-2 8-1V5c-3-1-6-.5-8 1Z"></path><path d="M12 6v13"></path>',
+    fiestas: '<path d="M8 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z"></path><path d="M8 11c0 2-1 3-1 5h2"></path><path d="M17 6a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z"></path><path d="M17 12c0 2-.7 2.5-.7 4.5h1.4"></path>',
+    muebles: '<path d="M5 11V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4"></path><path d="M4 11h16v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6Z"></path><path d="M5 18v2"></path><path d="M19 18v2"></path>',
+    otros: '<path d="M20.4 12.6 12 4H4v8l8.4 8.4a1 1 0 0 0 1.4 0l6.6-6.6a1 1 0 0 0 0-1.4Z"></path><circle cx="7.5" cy="7.5" r="1"></circle>'
+};
+
+// Etiquetas cortas para el tooltip/título de cada opción del selector.
+const CP_LABELS_ICONO_CATEGORIA = {
+    ropa: 'Ropa / Moda', calzado: 'Calzado', accesorios: 'Accesorios / Bijou',
+    belleza: 'Belleza', hogar: 'Hogar / Decoración', velas: 'Velas / Aromas',
+    comida: 'Comida', dulces: 'Dulces / Repostería', bebidas: 'Bebidas',
+    tecnologia: 'Tecnología', papeleria: 'Papelería', mascotas: 'Mascotas',
+    juguetes: 'Juguetes / Bebés', arte: 'Arte / Manualidades', deportes: 'Deportes',
+    plantas: 'Plantas / Jardín', regalos: 'Regalos', salud: 'Salud', limpieza: 'Limpieza',
+    termo: 'Termos', mate: 'Mate / Yerba', perfumeria: 'Perfumería',
+    bolsos: 'Bolsos / Carteras', anteojos: 'Anteojos / Lentes', relojes: 'Relojes',
+    flores: 'Flores / Floristería', libros: 'Libros', fiestas: 'Cotillón / Fiestas',
+    muebles: 'Muebles',
+    otros: 'Otro (genérico)'
+};
+
+function obtenerSvgIconoCategoria(key) {
+    const inner = CP_ICONOS_CATEGORIA[key] || CP_ICONOS_CATEGORIA.otros;
+    return `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+}
+
+// Arma el grid de opciones del modal. iconoActual puede ser '' (sin elegir
+// = automático en la tienda) o una de las claves de CP_ICONOS_CATEGORIA.
+function renderizarGridIconosCategoria(iconoActual) {
+    const cont = document.getElementById('grid-iconos-categoria');
+    if (!cont) return;
+    cont.innerHTML = '';
+
+    const crearOpcion = (key, titulo) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.title = titulo;
+        btn.dataset.icono = key;
+        btn.className = 'cp-opcion-icono aspect-square rounded-xl border-2 flex items-center justify-center transition-all';
+        btn.innerHTML = obtenerSvgIconoCategoria(key === 'auto' ? 'otros' : key);
+        btn.addEventListener('click', () => seleccionarIconoCategoria(key));
+        return btn;
+    };
+
+    // Primera opción: "Automático" (no guarda ícono, main.js adivina por
+    // nombre). Usamos el ícono genérico "otros" nada más para representarla.
+    const autoBtn = crearOpcion('auto', 'Automático (según el nombre)');
+    autoBtn.innerHTML = `<span class="text-[9px] font-black uppercase text-center leading-tight px-0.5">Auto</span>`;
+    cont.appendChild(autoBtn);
+
+    Object.keys(CP_ICONOS_CATEGORIA).forEach(key => {
+        cont.appendChild(crearOpcion(key, CP_LABELS_ICONO_CATEGORIA[key] || key));
+    });
+
+    marcarIconoActivo(iconoActual || 'auto');
+}
+
+function marcarIconoActivo(key) {
+    document.querySelectorAll('.cp-opcion-icono').forEach(btn => {
+        const activo = btn.dataset.icono === key;
+        btn.classList.toggle('border-obsidian', activo);
+        btn.classList.toggle('bg-obsidian', activo);
+        btn.classList.toggle('text-yellow-400', activo);
+        btn.classList.toggle('border-slate-200', !activo);
+        btn.classList.toggle('bg-white', !activo);
+        btn.classList.toggle('text-slate-500', !activo);
+    });
+}
+
+function seleccionarIconoCategoria(key) {
+    document.getElementById('cat-icono').value = key === 'auto' ? '' : key;
+    marcarIconoActivo(key);
+}
+
 async function cargarCategoriasAdmin() {
     const tabla = document.getElementById('tabla-categorias');
     const { data, error } = await supabase.from('categorias').select('*').order('nombre');
@@ -461,7 +595,10 @@ async function cargarCategoriasAdmin() {
 
     tabla.innerHTML = data.map(c => `
         <div class="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-sm p-2.5 sm:p-4 flex items-center justify-between gap-2 sm:gap-3 hover:shadow-md transition-shadow">
-            <div class="min-w-0">
+            <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <span class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center flex-shrink-0">
+                    ${obtenerSvgIconoCategoria(c.icono || elegirIconoCategoriaAuto(c.nombre))}
+                </span>
                 <p class="font-bold sm:font-extrabold text-slate-900 text-sm sm:text-base truncate">${escapeHtml(c.nombre)}</p>
             </div>
             <div class="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -470,6 +607,48 @@ async function cargarCategoriasAdmin() {
             </div>
         </div>
     `).join('');
+}
+
+// Mismas reglas por palabra clave que usa el sitio público (elegirIconoCategoria
+// en main.js) para adivinar un ícono cuando la categoría no tiene uno elegido
+// a mano. Se usa solo para la vista previa acá en el admin.
+const CP_REGLAS_ICONO_CATEGORIA = [
+    [/ropa|indumentaria|moda|remera|textil|prenda/, 'ropa'],
+    [/calzado|zapat/, 'calzado'],
+    [/joy|bijou|anillo|aro|collar|plata|accesorio/, 'accesorios'],
+    [/bellez|cosmet|maquilla|skincare|uña/, 'belleza'],
+    [/hogar|decorac|deco\b|casa/, 'hogar'],
+    [/vela|aroma|difusor|incienso/, 'velas'],
+    [/comida|gastronom|aliment|food|panader/, 'comida'],
+    [/dulce|repost|torta|postre|choco|golosina/, 'dulces'],
+    [/bebida|cerveza|vino|jugo|gaseosa/, 'bebidas'],
+    [/tecnolog|electro|gadget|celular|inform/, 'tecnologia'],
+    [/papeler|cuadern|oficina/, 'papeleria'],
+    [/mascota|perro|gato|veterinar/, 'mascotas'],
+    [/juguete|bebe|niñ|infantil|kids/, 'juguetes'],
+    [/arte|manualidad|artesan|craft/, 'arte'],
+    [/deporte|fitness|gym|entrenamiento/, 'deportes'],
+    [/planta|jardin|jardín|vivero/, 'plantas'],
+    [/regalo|souvenir/, 'regalos'],
+    [/salud|farmacia|herbal|bienestar/, 'salud'],
+    [/limpieza/, 'limpieza'],
+    [/termo/, 'termo'],
+    [/mate\b|yerba|bombilla/, 'mate'],
+    [/perfum|fragancia/, 'perfumeria'],
+    [/bolso|cartera|mochila/, 'bolsos'],
+    [/anteojo|lente|gafa/, 'anteojos'],
+    [/reloj/, 'relojes'],
+    [/flor|floreria|floristeria/, 'flores'],
+    [/libro|librer/, 'libros'],
+    [/fiesta|cotillon|cotillón|cumpleañ|globo/, 'fiestas'],
+    [/mueble|sillon|sillón|sofa|sofá/, 'muebles']
+];
+function elegirIconoCategoriaAuto(nombre) {
+    const n = (nombre || '').toLowerCase();
+    for (const [regex, key] of CP_REGLAS_ICONO_CATEGORIA) {
+        if (regex.test(n)) return key;
+    }
+    return 'otros';
 }
 
 function abrirModalCategoria(categoria = null) {
@@ -484,6 +663,8 @@ function abrirModalCategoria(categoria = null) {
     document.getElementById('btn-guardar-categoria').textContent = categoria ? 'Guardar cambios' : 'Guardar';
 
     if (categoria) document.getElementById('cat-nombre').value = categoria.nombre;
+    document.getElementById('cat-icono').value = categoria && categoria.icono ? categoria.icono : '';
+    renderizarGridIconosCategoria(categoria ? categoria.icono : '');
 
     document.getElementById('modal-categoria').classList.remove('hidden');
     document.getElementById('cat-nombre').focus();
@@ -502,6 +683,7 @@ document.getElementById('form-categoria').addEventListener('submit', async (e) =
     e.preventDefault();
     const id = document.getElementById('cat-id').value;
     const nombre = document.getElementById('cat-nombre').value.trim();
+    const icono = document.getElementById('cat-icono').value.trim() || null;
     const slug = nombre.toLowerCase()
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // saca tildes
         .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -510,8 +692,8 @@ document.getElementById('form-categoria').addEventListener('submit', async (e) =
     btnGuardar.disabled = true;
 
     const { error } = id
-        ? await supabase.from('categorias').update({ nombre, slug }).eq('id', id)
-        : await supabase.from('categorias').insert({ nombre, slug });
+        ? await supabase.from('categorias').update({ nombre, slug, icono }).eq('id', id)
+        : await supabase.from('categorias').insert({ nombre, slug, icono });
 
     btnGuardar.disabled = false;
 
