@@ -323,12 +323,14 @@ function calcularEstadoAcceso(emprendedor) {
     const estado = emprendedor.suscripcion_estado || 'sin_suscripcion';
     if (estado === 'authorized') return { bloqueado: false };
 
-    // Las cuentas "solo beneficios" (comercios que no venden, sólo dan
-    // descuentos a la comunidad) no tienen mes gratis: si no están con la
-    // suscripción al día, quedan bloqueadas de una, sin período de gracia.
+    // Las cuentas "solo beneficios" las crea el admin a mano después de que
+    // el comercio ya pagó la membresía por afuera del sistema (no pasan por
+    // MercadoPago). Por eso también reciben el mismo mes de margen desde
+    // que se crea la cuenta antes de considerarse vencidas: no tendría
+    // sentido mostrarles el botón de pago al toque si ya cobramos.
     const esSoloBeneficios = !!emprendedor.solo_beneficios;
-    const enPruebaGratis = !esSoloBeneficios && !ESTADOS_SUSCRIPCION_REAL.includes(estado);
-    const diasPrueba = esSoloBeneficios ? 0 : DIAS_PRUEBA_GRATIS;
+    const enPruebaGratis = !ESTADOS_SUSCRIPCION_REAL.includes(estado);
+    const diasPrueba = DIAS_PRUEBA_GRATIS;
 
     let vencimiento = emprendedor.fecha_vencimiento_suscripcion
         ? new Date(emprendedor.fecha_vencimiento_suscripcion)
