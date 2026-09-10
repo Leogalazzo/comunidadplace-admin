@@ -1,5 +1,6 @@
 let perfilActual = null;      // fila de usuarios (id, usuario, rol)
 let emprendedorActual = null; // fila de emprendedores
+let cuentaSoloBeneficios = false; // true si emprendedorActual.solo_beneficios; mostrarSeccion() lo usa para no destapar nunca los ítems de venta del menú
 let categorias = [];
 let productoEditandoId = null; // null = creando, uuid = editando
 let variantesEnEdicion = [];   // [{id?, nombre, valor, precio_adicional, _borrar?}]
@@ -117,6 +118,10 @@ function mostrarModalVencimiento(info) {
         // El bloqueo manual del admin no siempre es por falta de pago,
         // así que no mostramos el botón de pagar en ese caso.
         btnPagar.classList.add('hidden');
+    } else if (info.soloBeneficios) {
+        titulo.textContent = 'Activá tu pago para acceder';
+        mensaje.textContent = 'Tu suscripción mensual no está activa. Activala para poder ver los comercios adheridos y tu credencial de descuentos.';
+        btnPagar.classList.remove('hidden');
     } else {
         titulo.textContent = 'Tu mes gratis terminó';
         mensaje.textContent = 'Tu tienda dejó de mostrarse en la comunidad. Para reactivarla, activá tu suscripción mensual.';
@@ -252,6 +257,9 @@ function actualizarBannerBloqueo(emprendedor) {
     if (acceso.motivo === 'admin') {
         if (titulo) titulo.textContent = 'Tu tienda está bloqueada';
         motivoEl.textContent = emprendedor.motivo_bloqueo || 'Contactate con el equipo de la comunidad para más información.';
+    } else if (acceso.soloBeneficios) {
+        if (titulo) titulo.textContent = 'Activá tu pago para acceder a los beneficios';
+        motivoEl.textContent = 'Tu suscripción mensual no está activa. Activá el pago para poder ver los comercios adheridos y tu credencial de descuentos.';
     } else {
         if (titulo) titulo.textContent = 'Tu tienda no se muestra en la comunidad';
         motivoEl.textContent = 'Terminó tu mes gratis (o venció tu suscripción) sin renovarse. Activá el pago para que vuelva a aparecer.';
@@ -379,7 +387,36 @@ const NAV_BASE = "w-full text-left px-4 py-3 rounded-xl transition-all flex item
 const NAV_ACTIVO = `${NAV_BASE} bg-yellow-400 text-black font-bold shadow-md shadow-yellow-400/10`;
 const NAV_INACTIVO = `${NAV_BASE} text-slate-400 hover:text-white hover:bg-white/5`;
 
+// Cuentas "solo beneficios" (comercios que se suman únicamente para dar
+// descuentos a la comunidad, sin vender productos en la vidriera pública).
+// No deben poder gestionar productos, anuncios ni cartel QR de vendedor,
+// ni compartir un perfil público de tienda: sólo ven sus datos, la
+// credencial/beneficios y soporte (ayuda y pagos).
+function aplicarModoCuenta(emprendedor) {
+    const esSoloBeneficios = !!(emprendedor && emprendedor.solo_beneficios);
+    cuentaSoloBeneficios = esSoloBeneficios; // mostrarSeccion() lo consulta cada vez que se navega
+
+    // OJO: mostrarSeccion() pisa el className completo de cada botón del
+    // menú (incluye nav-productos/nav-anuncios/nav-qr), así que primero
+    // cambiamos de sección y recién DESPUÉS ocultamos esos ítems — si lo
+    // hacíamos al revés, mostrarSeccion() les borraba la clase "hidden".
+    if (esSoloBeneficios) mostrarSeccion('perfil');
+
+    ['nav-productos', 'nav-anuncios', 'nav-qr'].forEach(id => {
+        document.getElementById(id)?.classList.toggle('hidden', esSoloBeneficios);
+    });
+    document.getElementById('btn-compartir-perfil')?.classList.toggle('hidden', esSoloBeneficios);
+    document.getElementById('card-medios-pago-envio')?.classList.toggle('hidden', esSoloBeneficios);
+}
+
 function mostrarSeccion(seccionId) {
+    // Cuenta "solo beneficios": nunca dejamos entrar a las secciones de
+    // venta, aunque algo dispare mostrarSeccion('productos'/'anuncios'/'qr')
+    // por otro lado (ej. un botón interno de esas mismas secciones).
+    if (cuentaSoloBeneficios && ['productos', 'anuncios', 'qr'].includes(seccionId)) {
+        seccionId = 'perfil';
+    }
+
     const secciones = {
         productos: document.getElementById('section-productos'),
         perfil: document.getElementById('section-perfil'),
@@ -397,10 +434,17 @@ function mostrarSeccion(seccionId) {
         credencial: document.getElementById('nav-credencial'),
     };
 
+    // Ítems de venta ocultos para siempre en cuentas "solo beneficios",
+    // sin importar qué sección esté activa.
+    const OCULTOS_SOLO_BENEFICIOS = ['productos', 'anuncios', 'qr'];
+
     Object.keys(secciones).forEach((id) => {
         const activa = id === seccionId;
         secciones[id].classList.toggle('hidden', !activa);
         navs[id].className = activa ? NAV_ACTIVO : NAV_INACTIVO;
+        if (cuentaSoloBeneficios && OCULTOS_SOLO_BENEFICIOS.includes(id)) {
+            navs[id].classList.add('hidden');
+        }
     });
 
     if (seccionId === 'anuncios') actualizarContadorAnuncio();
@@ -1189,6 +1233,7 @@ async function cargarPerfilEmprendedor() {
     actualizarBannerBloqueo(emprendedorActual);
     renderEstadoSuscripcion(emprendedorActual);
     evaluarAccesoYAvisar(emprendedorActual);
+    aplicarModoCuenta(emprendedorActual);
 
     document.getElementById('p-nombre').value = data.nombre_tienda || '';
     document.getElementById('p-nombre-real').value = data.nombre_real || '';
@@ -1787,8 +1832,13 @@ async function abrirModalPagoSuscripcion() {
     ajustarModalPagoAlViewportVisible();
 
     try {
-        // 1) Traemos public key + precio vigente desde el Worker
-        const resConfig = await fetch(`${WORKER_SUSCRIPCIONES_URL}/config-pago`);
+        // 1) Traemos public key + precio vigente desde el Worker.
+        // Le mandamos el emprendedor_id para que el Worker pueda mirar en
+        // Supabase si es una cuenta "solo beneficios" y devolver el precio
+        // que corresponda ($5.000 sin mes gratis) en vez de un precio único
+        // para todos. Ver nota más abajo: esto requiere el cambio
+        // correspondiente del lado del Worker (no está en este archivo).
+        const resConfig = await fetch(`${WORKER_SUSCRIPCIONES_URL}/config-pago?emprendedor_id=${encodeURIComponent(perfilActual.id)}`);
         const config = await resConfig.json();
         if (!resConfig.ok || !config.publicKey) {
             throw new Error(config.error || 'No se pudo cargar la configuración de pago');
