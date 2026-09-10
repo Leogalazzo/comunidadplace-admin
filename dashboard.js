@@ -1752,16 +1752,21 @@ function renderEstadoSuscripcion(data) {
     // criterio acá para que el cartel no contradiga al resto del panel.
     const acceso = calcularEstadoAcceso(data);
 
+    // Las cuentas "solo beneficios" no tienen "mes gratis": el margen que
+    // les da calcularEstadoAcceso() es porque ya pagaron la membresía por
+    // afuera del sistema (el admin las crea recién después de cobrarles).
+    // Por eso, aunque técnicamente pasan por "enPruebaGratis", acá se
+    // muestran como una membresía activa y no como una prueba gratuita.
     const estado = acceso.enPruebaGratis
-        ? 'prueba_gratis'
+        ? (acceso.soloBeneficios ? 'membresia_al_dia' : 'prueba_gratis')
         : (data.suscripcion_estado || 'sin_suscripcion');
 
     const vencimiento = acceso.enPruebaGratis
         ? acceso.vencimiento
         : (data.fecha_vencimiento_suscripcion ? new Date(data.fecha_vencimiento_suscripcion) : null);
 
-    // Días que quedan de mes gratis (0 si ya venció o no aplica)
-    const diasRestantesPrueba = (estado === 'prueba_gratis' && vencimiento)
+    // Días que quedan de mes gratis / margen de membresía (0 si ya venció o no aplica)
+    const diasRestantesPrueba = ((estado === 'prueba_gratis' || estado === 'membresia_al_dia') && vencimiento)
         ? Math.max(0, Math.ceil((vencimiento.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
         : 0;
 
@@ -1772,6 +1777,14 @@ function renderEstadoSuscripcion(data) {
                 ? `Estás en tu mes gratis · te ${diasRestantesPrueba === 1 ? 'queda 1 día' : `quedan ${diasRestantesPrueba} días`}`
                 : 'Tu mes gratis ya terminó',
             color: 'bg-blue-100 text-blue-700', badge: 'Mes gratis', mostrarBoton: true,
+        },
+        membresia_al_dia: {
+            texto: diasRestantesPrueba > 0
+                ? 'Tu membresía está al día'
+                : 'Tu membresía vencida, renovala para seguir activa',
+            color: diasRestantesPrueba > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700',
+            badge: diasRestantesPrueba > 0 ? 'Activa' : 'Vencida',
+            mostrarBoton: diasRestantesPrueba === 0,
         },
         pending: { texto: 'Autorización de pago pendiente', color: 'bg-amber-100 text-amber-700', badge: 'Pendiente', mostrarBoton: true },
         authorized: { texto: 'Suscripción activa', color: 'bg-emerald-100 text-emerald-700', badge: 'Activa', mostrarBoton: false },
@@ -1791,6 +1804,8 @@ function renderEstadoSuscripcion(data) {
         ? (estado === 'authorized' ? 'Próximo cobro: '
             : estado === 'prueba_gratis'
                 ? (diasRestantesPrueba > 0 ? 'Próximo cobro: ' : 'Tu mes gratis venció el: ')
+            : estado === 'membresia_al_dia'
+                ? (diasRestantesPrueba > 0 ? 'Próximo pago: ' : 'Tu membresía venció el: ')
             : 'Venció el: ') + vencimiento.toLocaleDateString('es-AR')
         : '';
 
@@ -1801,6 +1816,9 @@ function renderEstadoSuscripcion(data) {
     // período gratuito. Se reactiva solo (mismo render) apenas
     // diasRestantesPrueba llega a 0.
     const hint = document.getElementById('susc-btn-pagar-hint');
+    // Para 'membresia_al_dia' el botón ya está oculto por mostrarBoton, así
+    // que este hint (pensado para el botón visible-pero-deshabilitado del
+    // mes gratis de emprendedores) sólo aplica a 'prueba_gratis'.
     const enMesGratisVigente = estado === 'prueba_gratis' && diasRestantesPrueba > 0;
 
     btnPagar.disabled = enMesGratisVigente;
