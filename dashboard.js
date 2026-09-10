@@ -407,6 +407,20 @@ function aplicarModoCuenta(emprendedor) {
     });
     document.getElementById('btn-compartir-perfil')?.classList.toggle('hidden', esSoloBeneficios);
     document.getElementById('card-medios-pago-envio')?.classList.toggle('hidden', esSoloBeneficios);
+
+    // "Mis datos": una cuenta que no vende ni tiene vidriera pública no
+    // necesita portada, descripción de marca, contacto/ubicación para
+    // compradores, ni redes sociales.
+    ['campo-banner-portada', 'campo-descripcion-bio', 'card-contacto-ubicacion', 'card-redes-sociales'].forEach(id => {
+        document.getElementById(id)?.classList.toggle('hidden', esSoloBeneficios);
+    });
+
+    // "Ayuda y pagos" -> transferencia bancaria: el monto a transferir es
+    // distinto para cuentas solo beneficios. Igual que el precio de la
+    // tarjeta (config-pago), hay que mantenerlo sincronizado a mano con la
+    // variable PRECIO_SUSCRIPCION_BENEFICIOS del Worker si cambia.
+    const montoTransferenciaEl = document.getElementById('susc-monto-transferencia');
+    if (montoTransferenciaEl) montoTransferenciaEl.textContent = esSoloBeneficios ? '$5.000' : '$20.000';
 }
 
 function mostrarSeccion(seccionId) {
