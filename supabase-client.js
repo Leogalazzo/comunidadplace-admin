@@ -323,23 +323,28 @@ function calcularEstadoAcceso(emprendedor) {
     const estado = emprendedor.suscripcion_estado || 'sin_suscripcion';
     if (estado === 'authorized') return { bloqueado: false };
 
-    const enPruebaGratis = !ESTADOS_SUSCRIPCION_REAL.includes(estado);
+    // Las cuentas "solo beneficios" (comercios que no venden, sólo dan
+    // descuentos a la comunidad) no tienen mes gratis: si no están con la
+    // suscripción al día, quedan bloqueadas de una, sin período de gracia.
+    const esSoloBeneficios = !!emprendedor.solo_beneficios;
+    const enPruebaGratis = !esSoloBeneficios && !ESTADOS_SUSCRIPCION_REAL.includes(estado);
+    const diasPrueba = esSoloBeneficios ? 0 : DIAS_PRUEBA_GRATIS;
 
     let vencimiento = emprendedor.fecha_vencimiento_suscripcion
         ? new Date(emprendedor.fecha_vencimiento_suscripcion)
         : null;
 
     // Nunca se activó ninguna prueba/suscripción -> el límite es
-    // 30 días desde que se creó la cuenta.
+    // "diasPrueba" días desde que se creó la cuenta (0 para solo beneficios).
     if (!vencimiento && emprendedor.created_at) {
-        vencimiento = new Date(new Date(emprendedor.created_at).getTime() + DIAS_PRUEBA_GRATIS * 24 * 60 * 60 * 1000);
+        vencimiento = new Date(new Date(emprendedor.created_at).getTime() + diasPrueba * 24 * 60 * 60 * 1000);
     }
 
     if (vencimiento && Date.now() > vencimiento.getTime()) {
-        return { bloqueado: true, motivo: 'pago', vencimiento, enPruebaGratis };
+        return { bloqueado: true, motivo: 'pago', vencimiento, enPruebaGratis, soloBeneficios: esSoloBeneficios };
     }
 
-    return { bloqueado: false, enPruebaGratis, vencimiento };
+    return { bloqueado: false, enPruebaGratis, vencimiento, soloBeneficios: esSoloBeneficios };
 }
 
 // ------------------------------------------------------------
