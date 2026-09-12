@@ -317,15 +317,23 @@
                 </header>
 
                 <!-- FILTROS -->
-                <div class="flex flex-col sm:flex-row gap-2.5 sm:gap-3 mb-5">
-                    <div id="filtro-tipo-postulaciones" class="grid grid-cols-3 sm:flex gap-1.5 bg-slate-100 rounded-xl p-1 sm:shrink-0">
-                        <button data-filtro="todos" onclick="setFiltroTipoPostulaciones('todos')" class="filtro-btn filtro-activo h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Todos</button>
-                        <button data-filtro="emprendedor" onclick="setFiltroTipoPostulaciones('emprendedor')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Emprendedores</button>
-                        <button data-filtro="comercio" onclick="setFiltroTipoPostulaciones('comercio')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Comercios</button>
+                <div class="flex flex-col gap-3 mb-5">
+                    <div>
+                        <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Tipo</p>
+                        <div id="filtro-tipo-postulaciones" class="grid grid-cols-3 sm:inline-flex gap-1.5 bg-slate-100 rounded-xl p-1 w-full sm:w-auto">
+                            <button data-filtro="todos" onclick="setFiltroTipoPostulaciones('todos')" class="filtro-btn filtro-activo h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Todos</button>
+                            <button data-filtro="emprendedor" onclick="setFiltroTipoPostulaciones('emprendedor')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Emprendedores</button>
+                            <button data-filtro="comercio" onclick="setFiltroTipoPostulaciones('comercio')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Comercios</button>
+                        </div>
                     </div>
-                    <div id="filtro-estado-postulaciones" class="grid grid-cols-2 sm:flex gap-1.5 bg-slate-100 rounded-xl p-1 sm:shrink-0">
-                        <button data-filtro="pendiente" onclick="setFiltroEstadoPostulaciones('pendiente')" class="filtro-btn filtro-activo h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Pendientes</button>
-                        <button data-filtro="todos" onclick="setFiltroEstadoPostulaciones('todos')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Todos los estados</button>
+                    <div>
+                        <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Estado</p>
+                        <div id="filtro-estado-postulaciones" class="grid grid-cols-2 sm:inline-flex gap-1.5 bg-slate-100 rounded-xl p-1 w-full sm:w-auto">
+                            <button data-filtro="pendiente" onclick="setFiltroEstadoPostulaciones('pendiente')" class="filtro-btn filtro-activo h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Pendientes</button>
+                            <button data-filtro="contactado" onclick="setFiltroEstadoPostulaciones('contactado')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Contactados</button>
+                            <button data-filtro="aprobada" onclick="setFiltroEstadoPostulaciones('aprobada')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Aprobadas</button>
+                            <button data-filtro="rechazada" onclick="setFiltroEstadoPostulaciones('rechazada')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Rechazadas</button>
+                        </div>
                     </div>
                 </div>
 
