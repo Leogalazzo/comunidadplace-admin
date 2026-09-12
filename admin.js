@@ -866,7 +866,8 @@ function renderPostulaciones() {
     contador.textContent = `${lista.length} postulación${lista.length === 1 ? '' : 'es'}`;
 
     if (lista.length === 0) {
-        cont.innerHTML = `<div class="p-8 text-center text-slate-400 font-semibold">No hay postulaciones con estos filtros.</div>`;
+        const etiquetaEstado = (POSTULACION_ESTADO_LABEL[filtroEstadoPostulacionesActual] || '').toLowerCase();
+        cont.innerHTML = `<div class="p-8 text-center text-slate-400 font-semibold">No hay postulaciones ${etiquetaEstado ? etiquetaEstado + 's' : ''} con este filtro.</div>`;
         return;
     }
 
