@@ -53,11 +53,12 @@ const NAV_ACTIVO = `${NAV_BASE} bg-yellow-400 text-black font-bold shadow-md sha
 const NAV_INACTIVO = `${NAV_BASE} text-gray-400 hover:text-white`;
 
 function mostrarSeccion(id) {
-    const secciones = ['emprendedores', 'categorias', 'productos', 'postulaciones'];
+    const secciones = ['emprendedores', 'beneficios', 'categorias', 'productos', 'postulaciones'];
     secciones.forEach(s => {
         document.getElementById('section-' + s).classList.toggle('hidden', s !== id);
         document.getElementById('nav-' + s).className = s === id ? NAV_ACTIVO : NAV_INACTIVO;
     });
+    if (id === 'beneficios') renderBeneficios();
     if (id === 'categorias') cargarCategoriasAdmin();
     if (id === 'productos') cargarProductosAdmin();
     if (id === 'postulaciones') cargarPostulacionesAdmin();
@@ -83,12 +84,18 @@ async function cargarEmprendedores() {
 
     emprendedoresCache = data;
     renderEmprendedores();
+    renderBeneficios();
 }
 
 function renderEmprendedores() {
     const grid = document.getElementById('grid-emprendedores');
     const contador = document.getElementById('contador-emprendedores');
-    const total = emprendedoresCache.length;
+
+    // Los emprendedores "solo beneficios" (pagan solo por los descuentos de
+    // la comunidad, no tienen tienda) viven en su propia sección; no se
+    // listan acá para no duplicarlos.
+    const base = emprendedoresCache.filter(e => !e.solo_beneficios);
+    const total = base.length;
 
     if (total === 0) {
         grid.innerHTML = `
@@ -101,7 +108,7 @@ function renderEmprendedores() {
         return;
     }
 
-    let data = emprendedoresCache;
+    let data = base;
 
     // "Bloqueado" ahora incluye dos motivos distintos (ver calcularEstadoAcceso
     // en supabase-client.js): bloqueo manual del admin, o mes gratis/suscripción
@@ -120,7 +127,7 @@ function renderEmprendedores() {
         });
     }
 
-    const totalActivos = emprendedoresCache.filter(e => !calcularEstadoAcceso(e).bloqueado).length;
+    const totalActivos = base.filter(e => !calcularEstadoAcceso(e).bloqueado).length;
     contador.textContent = `${total} emprendedor${total === 1 ? '' : 'es'} · ${totalActivos} activo${totalActivos === 1 ? '' : 's'}` +
         (data.length !== total ? ` · ${data.length} coincidencia${data.length === 1 ? '' : 's'}` : '');
 
@@ -134,7 +141,12 @@ function renderEmprendedores() {
         return;
     }
 
-    grid.innerHTML = data.map(e => {
+    grid.innerHTML = data.map(tarjetaEmprendedorHTML).join('');
+}
+
+// Tarjeta de emprendedor/comercio reutilizada tanto en la grilla principal
+// de "Emprendedores" como en la de "Beneficios".
+function tarjetaEmprendedorHTML(e) {
         const inicial = e.nombre_tienda ? e.nombre_tienda.charAt(0).toUpperCase() : '?';
         const avatar = e.logo_url
             ? `<img src="${miniaturaCloudinary(e.logo_url, 400)}" alt="${escapeHtml(e.nombre_tienda)}" class="w-full h-full object-cover" loading="lazy" decoding="async">`
@@ -167,7 +179,6 @@ function renderEmprendedores() {
                 <span class="absolute top-2 left-2 sm:top-3 sm:left-3 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm ${badge.clase}">
                     ${badge.texto}
                 </span>
-                ${e.solo_beneficios ? `<span class="absolute top-2 right-2 sm:top-3 sm:right-3 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm bg-purple-500/95 text-white">Solo beneficios</span>` : ''}
             </div>
             <div class="p-3 sm:p-4 flex flex-col gap-1 sm:gap-1.5 flex-1">
                 <span class="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${e.usuarios ? escapeHtml(e.usuarios.usuario) : '-'}</span>
@@ -186,19 +197,43 @@ function renderEmprendedores() {
             </div>
         </div>
     `;
-    }).join('');
 }
 
-// Cambia si un comercio es "vendedor" (aparece en la vidriera pública y
-// puede cargar productos) o "solo beneficios" (sólo figura para dar
-// descuentos: no vende nada, y su panel se limita a datos/beneficios/soporte).
-// Pensado para comercios que se postularon como "comercio_membresia".
+// Sección "Beneficios": todos los comercios marcados como solo_beneficios,
+// sin importar su estado (activo/bloqueado). Usa la misma cache que ya
+// carga cargarEmprendedores(), así que no pega otro fetch a Supabase.
+function renderBeneficios() {
+    const grid = document.getElementById('grid-beneficios');
+    const contador = document.getElementById('contador-beneficios');
+    if (!grid) return;
+
+    const data = emprendedoresCache.filter(e => e.solo_beneficios);
+
+    contador.textContent = `${data.length} emprendedor${data.length === 1 ? '' : 'es'} en beneficios`;
+
+    if (data.length === 0) {
+        grid.innerHTML = `
+            <div class="col-span-full flex flex-col items-center justify-center gap-3 py-24 text-center">
+                <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl">🎟️</div>
+                <p class="text-slate-500 font-bold">Todavía no hay emprendedores en "solo beneficios".</p>
+                <p class="text-slate-400 text-sm">Pasá un emprendedor a "solo beneficios" desde su tarjeta en Emprendedores.</p>
+            </div>`;
+        return;
+    }
+
+    grid.innerHTML = data.map(tarjetaEmprendedorHTML).join('');
+}
+
+// Cambia si un emprendedor es "vendedor" (aparece en Emprendedores, tiene
+// tienda pública y puede cargar productos) o "solo beneficios" (paga solo
+// para acceder a los descuentos de la comunidad: no tiene tienda ni vende,
+// y pasa a listarse únicamente en la sección Beneficios).
 async function toggleSoloBeneficios(id, actual) {
     const nuevoValor = !actual;
     const confirmado = await confirmarAccion(
         nuevoValor
-            ? 'El comercio dejará de aparecer en la vidriera pública para vender y su panel quedará limitado a sus datos, beneficios y soporte.'
-            : 'El comercio va a poder volver a cargar productos y aparecer en la vidriera pública para vender.',
+            ? 'El emprendedor dejará de aparecer en la vidriera pública para vender, va a pasar a la sección "Beneficios" y su panel quedará limitado a sus datos, beneficios y soporte.'
+            : 'El emprendedor va a volver a la sección "Emprendedores", pudiendo cargar productos y aparecer en la vidriera pública para vender.',
         { titulo: nuevoValor ? '¿Pasar a "solo beneficios"?' : '¿Volver a cuenta vendedora?', textoConfirmar: 'Confirmar' }
     );
     if (!confirmado) return;
@@ -206,7 +241,7 @@ async function toggleSoloBeneficios(id, actual) {
     const { error } = await supabase.from('emprendedores').update({ solo_beneficios: nuevoValor }).eq('id', id);
     if (error) { mostrarToast('No se pudo actualizar la cuenta.', 'error'); console.error(error); return; }
 
-    mostrarToast(nuevoValor ? 'Comercio pasado a "solo beneficios".' : 'Comercio vuelto a cuenta vendedora.', 'success');
+    mostrarToast(nuevoValor ? 'Emprendedor pasado a "solo beneficios".' : 'Emprendedor vuelto a cuenta vendedora.', 'success');
     await cargarEmprendedores();
 }
 
@@ -440,10 +475,12 @@ function abrirModalBloqueo(id) {
     document.getElementById('bloqueo-motivo-select').value = 'Falta de pago de la suscripción';
     document.getElementById('bloqueo-detalle').value = '';
     document.getElementById('modal-bloqueo').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
 }
 
 function cerrarModalBloqueo() {
     document.getElementById('modal-bloqueo').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
 }
 
 document.getElementById('form-bloqueo').addEventListener('submit', async (e) => {
@@ -470,6 +507,58 @@ document.getElementById('form-bloqueo').addEventListener('submit', async (e) => 
     mostrarToast('Emprendedor bloqueado.', 'success');
     cerrarModalBloqueo();
     await cargarEmprendedores();
+});
+
+// ============================================================
+// IMAGEN DE CATEGORÍA (subida a Cloudinary, opcional)
+// ============================================================
+// Mismo cloud/preset que se usa para subir imágenes de producto y logo
+// desde el dashboard de emprendedor. Upload unsigned: no requiere API key
+// en el cliente, solo el upload_preset configurado como "unsigned" en
+// Cloudinary.
+const CLOUDINARY_CLOUD_NAME = 'dhgrivib0';
+const CLOUDINARY_UPLOAD_PRESET = 'comunidadplace';
+
+let archivoImagenCategoriaSeleccionado = null;
+
+async function subirImagenCategoriaACloudinary(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+    const resp = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: formData
+    });
+    if (!resp.ok) throw new Error('No se pudo subir la imagen.');
+    const data = await resp.json();
+    return data.secure_url;
+}
+
+function mostrarPreviewImagenCategoria(url) {
+    const cont = document.getElementById('preview-imagen-categoria');
+    const btnQuitar = document.getElementById('btn-quitar-imagen-categoria');
+    if (url) {
+        cont.innerHTML = `<img src="${url}" class="w-full h-full object-cover" alt="Vista previa">`;
+        btnQuitar.classList.remove('hidden');
+    } else {
+        cont.innerHTML = `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg>`;
+        btnQuitar.classList.add('hidden');
+    }
+}
+
+function quitarImagenCategoria() {
+    archivoImagenCategoriaSeleccionado = null;
+    document.getElementById('cat-imagen-url').value = '';
+    document.getElementById('cat-imagen-input').value = '';
+    mostrarPreviewImagenCategoria('');
+}
+
+document.getElementById('cat-imagen-input').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    archivoImagenCategoriaSeleccionado = file;
+    mostrarPreviewImagenCategoria(URL.createObjectURL(file));
 });
 
 // ============================================================
@@ -596,8 +685,10 @@ async function cargarCategoriasAdmin() {
     tabla.innerHTML = data.map(c => `
         <div class="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-sm p-2.5 sm:p-4 flex items-center justify-between gap-2 sm:gap-3 hover:shadow-md transition-shadow">
             <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                <span class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center flex-shrink-0">
-                    ${obtenerSvgIconoCategoria(c.icono || elegirIconoCategoriaAuto(c.nombre))}
+                <span class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    ${c.imagen_url
+                        ? `<img src="${c.imagen_url}" class="w-full h-full object-cover" alt="">`
+                        : obtenerSvgIconoCategoria(c.icono || elegirIconoCategoriaAuto(c.nombre))}
                 </span>
                 <p class="font-bold sm:font-extrabold text-slate-900 text-sm sm:text-base truncate">${escapeHtml(c.nombre)}</p>
             </div>
@@ -666,11 +757,17 @@ function abrirModalCategoria(categoria = null) {
     document.getElementById('cat-icono').value = categoria && categoria.icono ? categoria.icono : '';
     renderizarGridIconosCategoria(categoria ? categoria.icono : '');
 
+    archivoImagenCategoriaSeleccionado = null;
+    document.getElementById('cat-imagen-url').value = categoria && categoria.imagen_url ? categoria.imagen_url : '';
+    mostrarPreviewImagenCategoria(categoria ? categoria.imagen_url : '');
+
     document.getElementById('modal-categoria').classList.remove('hidden');
     document.getElementById('cat-nombre').focus();
+    document.body.classList.add('overflow-hidden');
 }
 function cerrarModalCategoria() {
     document.getElementById('modal-categoria').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
 }
 
 async function editarCategoria(id) {
@@ -691,11 +788,28 @@ document.getElementById('form-categoria').addEventListener('submit', async (e) =
     const btnGuardar = document.getElementById('btn-guardar-categoria');
     btnGuardar.disabled = true;
 
+    let imagen_url = document.getElementById('cat-imagen-url').value.trim() || null;
+
+    if (archivoImagenCategoriaSeleccionado) {
+        btnGuardar.textContent = 'Subiendo imagen...';
+        try {
+            imagen_url = await subirImagenCategoriaACloudinary(archivoImagenCategoriaSeleccionado);
+        } catch (err) {
+            btnGuardar.disabled = false;
+            btnGuardar.textContent = id ? 'Guardar cambios' : 'Guardar';
+            mostrarToast('No se pudo subir la imagen. Probá de nuevo.', 'error');
+            return;
+        }
+    }
+
+    btnGuardar.textContent = 'Guardando...';
+
     const { error } = id
-        ? await supabase.from('categorias').update({ nombre, slug, icono }).eq('id', id)
-        : await supabase.from('categorias').insert({ nombre, slug, icono });
+        ? await supabase.from('categorias').update({ nombre, slug, icono, imagen_url }).eq('id', id)
+        : await supabase.from('categorias').insert({ nombre, slug, icono, imagen_url });
 
     btnGuardar.disabled = false;
+    btnGuardar.textContent = id ? 'Guardar cambios' : 'Guardar';
 
     if (error) {
         mostrarToast(error.message.includes('duplicate') ? 'Esa categoría ya existe.' : 'No se pudo guardar la categoría.', 'error');
@@ -914,10 +1028,12 @@ function abrirModalPostulacionDetalle(id) {
     document.getElementById('pd-creado').textContent = 'Recibida el ' + new Date(p.created_at).toLocaleString('es-AR');
 
     document.getElementById('modal-postulacion-detalle').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
 }
 
 function cerrarModalPostulacionDetalle() {
     document.getElementById('modal-postulacion-detalle').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
 }
 
 async function actualizarEstadoPostulacion(estado) {
