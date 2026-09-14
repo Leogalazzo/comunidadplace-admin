@@ -269,7 +269,9 @@ function actualizarBannerBloqueo(emprendedor) {
 async function cargarCategorias() {
     const { data, error } = await supabase.from('categorias').select('*').order('nombre');
     if (error) { console.error(error); return; }
-    categorias = data;
+    // No dejamos elegir (ni filtrar por) categorías que el admin ocultó de
+    // la tienda pública (columna `activa`).
+    categorias = data.filter(c => c.activa !== false);
     selectCategoria.innerHTML = '<option value="" disabled selected>Elegí categoría</option>'
         + categorias.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
 
