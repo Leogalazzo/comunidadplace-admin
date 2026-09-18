@@ -23,10 +23,28 @@ const IMG_PESO_OBJETIVO_MAX = 300 * 1024; // 300 KB
 const IMG_CALIDAD_INICIAL = 0.8;
 const IMG_CALIDAD_MINIMA = 0.5;
 
+// Miniatura para las cards de grilla (catálogo, panel del vendedor, tienda):
+// se sube COMO ARCHIVO APARTE (mismo nombre + sufijo "-thumb"), no se pide
+// redimensionada al vuelo, porque el bucket público de Supabase Storage no
+// hace transformación de imágenes en el plan free (a diferencia de
+// Cloudinary, donde sí existe miniaturaCloudinary()). Antes de esto, las
+// cards pedían la imagen completa (hasta 300 KB) para mostrar un cuadrado
+// de ~150px, lo que infla mucho el Cached Egress del bucket.
+// NOTA: BUCKET_PRODUCTOS e IMG_THUMB_SUFIJO están declarados en
+// supabase-client.js (junto con urlThumbProducto()), no acá, porque esas
+// hacen falta en TODAS las páginas que muestran productos (catálogo,
+// tienda, panel), mientras que este archivo solo se carga en dashboard.html
+// (donde se sube la foto).
+const IMG_THUMB_LADO = 400;
+const IMG_THUMB_PESO_OBJETIVO_MAX = 60 * 1024; // 60 KB
+
+// Un año en segundos: los nombres de archivo incluyen timestamp + random,
+// así que un archivo nunca se pisa a sí mismo -> es seguro cachearlo "para
+// siempre" en el CDN y en el navegador (evita recargas de origen de más).
+const STORAGE_CACHE_CONTROL = '31536000';
+
 const CLOUDINARY_CLOUD_NAME = 'dhgrivib0';
 const CLOUDINARY_UPLOAD_PRESET = 'comunidadplace';
-
-const BUCKET_PRODUCTOS = 'productos-imagenes';
 
 // ------------------------------------------------------------
 // VALIDACIÓN
@@ -67,9 +85,9 @@ function canvasABlobWebp(canvas, calidad) {
 
 // Redimensiona (si hace falta), convierte a WebP y ajusta la calidad de forma
 // iterativa (80% -> 50%) hasta acercarse al peso objetivo. Devuelve un Blob.
-async function comprimirImagen(file, maxLado = IMG_MAX_LADO_DEFAULT) {
-    const img = await cargarImagenDesdeArchivo(file);
-
+// Recibe la imagen ya cargada (<img>) para poder generar varios tamaños
+// (imagen completa + miniatura) sin decodificar el archivo original dos veces.
+async function comprimirImagenCargada(img, maxLado, pesoObjetivo) {
     let { width, height } = img;
     if (width > maxLado || height > maxLado) {
         const escala = Math.min(maxLado / width, maxLado / height);
@@ -81,17 +99,34 @@ async function comprimirImagen(file, maxLado = IMG_MAX_LADO_DEFAULT) {
     canvas.width = width;
     canvas.height = height;
     canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-    URL.revokeObjectURL(img.src);
 
     let calidad = IMG_CALIDAD_INICIAL;
     let blob = await canvasABlobWebp(canvas, calidad);
 
-    while (blob.size > IMG_PESO_OBJETIVO_MAX && calidad > IMG_CALIDAD_MINIMA) {
+    while (blob.size > pesoObjetivo && calidad > IMG_CALIDAD_MINIMA) {
         calidad = Math.round((calidad - 0.1) * 100) / 100;
         blob = await canvasABlobWebp(canvas, calidad);
     }
 
     return blob;
+}
+
+async function comprimirImagen(file, maxLado = IMG_MAX_LADO_DEFAULT) {
+    const img = await cargarImagenDesdeArchivo(file);
+    const blob = await comprimirImagenCargada(img, maxLado, IMG_PESO_OBJETIVO_MAX);
+    URL.revokeObjectURL(img.src);
+    return blob;
+}
+
+// Genera los dos tamaños de una foto de producto a partir del MISMO archivo
+// origen: la imagen completa (para el modal de detalle) y una miniatura
+// liviana (para las cards de grilla). Evita re-leer el archivo dos veces.
+async function comprimirImagenProductoConThumb(file) {
+    const img = await cargarImagenDesdeArchivo(file);
+    const completa = await comprimirImagenCargada(img, IMG_MAX_LADO_DEFAULT, IMG_PESO_OBJETIVO_MAX);
+    const thumb = await comprimirImagenCargada(img, IMG_THUMB_LADO, IMG_THUMB_PESO_OBJETIVO_MAX);
+    URL.revokeObjectURL(img.src);
+    return { completa, thumb };
 }
 
 // ------------------------------------------------------------
@@ -103,28 +138,41 @@ async function subirImagenProductoSupabase(file, emprendedorId) {
     const errorValidacion = validarImagenSeleccionada(file);
     if (errorValidacion) throw new Error(errorValidacion);
 
-    const blob = await comprimirImagen(file, IMG_MAX_LADO_DEFAULT);
-    const nombreArchivo = `${emprendedorId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
+    const { completa, thumb } = await comprimirImagenProductoConThumb(file);
+    const nombreBase = `${emprendedorId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const nombreArchivo = `${nombreBase}.webp`;
+    const nombreThumb = `${nombreBase}${IMG_THUMB_SUFIJO}.webp`;
 
     const { error } = await supabase.storage
         .from(BUCKET_PRODUCTOS)
-        .upload(nombreArchivo, blob, { contentType: 'image/webp', upsert: false });
-
+        .upload(nombreArchivo, completa, { contentType: 'image/webp', upsert: false, cacheControl: STORAGE_CACHE_CONTROL });
     if (error) throw error;
+
+    // El thumb es una optimización de bandwidth, no dato crítico: si falla
+    // la subida no cortamos el flujo (urlThumbProducto ya cae de vuelta a la
+    // imagen completa si no encuentra el thumb), solo lo logueamos.
+    const { error: errorThumb } = await supabase.storage
+        .from(BUCKET_PRODUCTOS)
+        .upload(nombreThumb, thumb, { contentType: 'image/webp', upsert: false, cacheControl: STORAGE_CACHE_CONTROL });
+    if (errorThumb) console.error('No se pudo subir la miniatura de la imagen:', errorThumb);
 
     const { data } = supabase.storage.from(BUCKET_PRODUCTOS).getPublicUrl(nombreArchivo);
     return data.publicUrl;
 }
 
-// Borra una imagen de producto del bucket a partir de su URL pública.
-// No es crítico si falla (por eso no lanza error, solo loguea).
+// Borra una imagen de producto (y su miniatura, si existe) del bucket a
+// partir de su URL pública. No es crítico si falla (por eso no lanza error,
+// solo loguea).
 async function borrarImagenProductoSupabase(urlPublica) {
     if (!urlPublica) return;
     const marcador = `/${BUCKET_PRODUCTOS}/`;
     const idx = urlPublica.indexOf(marcador);
     if (idx === -1) return; // no es una imagen de este bucket (ej: URL vieja externa)
     const path = urlPublica.slice(idx + marcador.length);
-    const { error } = await supabase.storage.from(BUCKET_PRODUCTOS).remove([path]);
+    const puntoExtension = path.lastIndexOf('.webp');
+    const pathThumb = puntoExtension === -1 ? null : path.slice(0, puntoExtension) + IMG_THUMB_SUFIJO + path.slice(puntoExtension);
+    const paths = pathThumb ? [path, pathThumb] : [path];
+    const { error } = await supabase.storage.from(BUCKET_PRODUCTOS).remove(paths);
     if (error) console.error('No se pudo borrar la imagen anterior del storage:', error);
 }
 
