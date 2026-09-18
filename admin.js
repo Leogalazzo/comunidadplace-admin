@@ -179,6 +179,10 @@ function tarjetaEmprendedorHTML(e) {
                 <span class="absolute top-2 left-2 sm:top-3 sm:left-3 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm ${badge.clase}">
                     ${badge.texto}
                 </span>
+                <button onclick="event.stopPropagation(); enviarAvisoIndividual('${e.id}')" title="Enviar aviso"
+                    class="absolute top-2 right-2 sm:top-3 sm:right-3 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/90 hover:bg-yellow-400 text-black flex items-center justify-center text-sm shadow-sm transition-colors">
+                    📣
+                </button>
             </div>
             <div class="p-3 sm:p-4 flex flex-col gap-1 sm:gap-1.5 flex-1">
                 <span class="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${e.usuarios ? escapeHtml(e.usuarios.usuario) : '-'}</span>
@@ -408,9 +412,26 @@ function abrirModalDetalleEmprendedor(id) {
         };
     }
 
+    document.getElementById('detalle-btn-aviso').onclick = () => enviarAvisoIndividual(e.id);
+
     document.getElementById('modal-detalle-overlay').classList.add('abierto');
     document.getElementById('modal-detalle').classList.add('abierto');
     document.body.classList.add('overflow-hidden');
+}
+
+// Manda un aviso individual (mensaje emergente) a un emprendedor puntual.
+// Se usa tanto desde el botón 📣 de la card como desde el modal de detalle.
+async function enviarAvisoIndividual(id) {
+    const e = emprendedoresCache.find(x => String(x.id) === String(id));
+    if (!e) return;
+
+    const mensaje = await pedirAviso(e.nombre_tienda || 'este emprendedor');
+    if (!mensaje) return;
+
+    const { error } = await supabase.from('avisos_admin').insert({ emprendedor_id: id, mensaje });
+    if (error) { mostrarToast('No se pudo enviar el aviso.', 'error'); console.error(error); return; }
+
+    mostrarToast('Aviso enviado.', 'success');
 }
 
 function cerrarModalDetalleEmprendedor() {
@@ -559,6 +580,37 @@ document.getElementById('cat-imagen-input').addEventListener('change', (e) => {
     if (!file) return;
     archivoImagenCategoriaSeleccionado = file;
     mostrarPreviewImagenCategoria(URL.createObjectURL(file));
+});
+
+// Imagen de banner (horizontal): mismo mecanismo de subida que la imagen
+// principal (subirImagenCategoriaACloudinary sirve para cualquier imagen),
+// pero se guarda aparte en la columna `banner_url` de la tabla `categorias`.
+let archivoBannerCategoriaSeleccionado = null;
+
+function mostrarPreviewImagenBannerCategoria(url) {
+    const cont = document.getElementById('preview-banner-categoria');
+    const btnQuitar = document.getElementById('btn-quitar-banner-categoria');
+    if (url) {
+        cont.innerHTML = `<img src="${url}" class="w-full h-full object-cover" alt="Vista previa">`;
+        btnQuitar.classList.remove('hidden');
+    } else {
+        cont.innerHTML = `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg>`;
+        btnQuitar.classList.add('hidden');
+    }
+}
+
+function quitarImagenBannerCategoria() {
+    archivoBannerCategoriaSeleccionado = null;
+    document.getElementById('cat-banner-url').value = '';
+    document.getElementById('cat-banner-input').value = '';
+    mostrarPreviewImagenBannerCategoria('');
+}
+
+document.getElementById('cat-banner-input').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    archivoBannerCategoriaSeleccionado = file;
+    mostrarPreviewImagenBannerCategoria(URL.createObjectURL(file));
 });
 
 // ============================================================
@@ -786,6 +838,10 @@ function abrirModalCategoria(categoria = null) {
     document.getElementById('cat-imagen-url').value = categoria && categoria.imagen_url ? categoria.imagen_url : '';
     mostrarPreviewImagenCategoria(categoria ? categoria.imagen_url : '');
 
+    archivoBannerCategoriaSeleccionado = null;
+    document.getElementById('cat-banner-url').value = categoria && categoria.banner_url ? categoria.banner_url : '';
+    mostrarPreviewImagenBannerCategoria(categoria ? categoria.banner_url : '');
+
     document.getElementById('modal-categoria').classList.remove('hidden');
     document.getElementById('cat-nombre').focus();
     document.body.classList.add('overflow-hidden');
@@ -814,6 +870,7 @@ document.getElementById('form-categoria').addEventListener('submit', async (e) =
     btnGuardar.disabled = true;
 
     let imagen_url = document.getElementById('cat-imagen-url').value.trim() || null;
+    let banner_url = document.getElementById('cat-banner-url').value.trim() || null;
 
     if (archivoImagenCategoriaSeleccionado) {
         btnGuardar.textContent = 'Subiendo imagen...';
@@ -827,11 +884,23 @@ document.getElementById('form-categoria').addEventListener('submit', async (e) =
         }
     }
 
+    if (archivoBannerCategoriaSeleccionado) {
+        btnGuardar.textContent = 'Subiendo banner...';
+        try {
+            banner_url = await subirImagenCategoriaACloudinary(archivoBannerCategoriaSeleccionado);
+        } catch (err) {
+            btnGuardar.disabled = false;
+            btnGuardar.textContent = id ? 'Guardar cambios' : 'Guardar';
+            mostrarToast('No se pudo subir la imagen de banner. Probá de nuevo.', 'error');
+            return;
+        }
+    }
+
     btnGuardar.textContent = 'Guardando...';
 
     const { error } = id
-        ? await supabase.from('categorias').update({ nombre, slug, icono, imagen_url }).eq('id', id)
-        : await supabase.from('categorias').insert({ nombre, slug, icono, imagen_url });
+        ? await supabase.from('categorias').update({ nombre, slug, icono, imagen_url, banner_url }).eq('id', id)
+        : await supabase.from('categorias').insert({ nombre, slug, icono, imagen_url, banner_url });
 
     btnGuardar.disabled = false;
     btnGuardar.textContent = id ? 'Guardar cambios' : 'Guardar';
