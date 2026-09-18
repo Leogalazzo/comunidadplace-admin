@@ -185,6 +185,31 @@ function miniaturaCloudinary(url, size = 60) {
     return url.slice(0, inicio) + `w_${size},h_${size},c_fill,q_auto,f_auto/` + url.slice(inicio);
 }
 
+// ------------------------------------------------------------
+// MINIATURA DE FOTOS DE PRODUCTO (Supabase Storage)
+// ------------------------------------------------------------
+// A diferencia de Cloudinary, el bucket de Storage no redimensiona al vuelo
+// en el plan free: la miniatura se sube como archivo aparte al cargar la
+// foto (ver image-upload.js, solo cargado en dashboard.html). Esta función
+// SÍ hace falta en todas las páginas que muestran productos (catálogo,
+// tienda, panel), por eso vive acá y no en image-upload.js.
+const BUCKET_PRODUCTOS = 'productos-imagenes';
+const IMG_THUMB_SUFIJO = '-thumb';
+
+// Dado el imagen_url completa guardada en la fila del producto, arma la URL
+// de su miniatura liviana para usar en las cards de grilla. Si la imagen es
+// de antes de este cambio (no tiene thumb subido), cae de vuelta a la
+// imagen completa: no rompe nada de lo que ya estaba cargado.
+function urlThumbProducto(imagenUrl) {
+    if (!imagenUrl) return imagenUrl;
+    const marcador = `/${BUCKET_PRODUCTOS}/`;
+    const idx = imagenUrl.indexOf(marcador);
+    if (idx === -1) return imagenUrl; // no es una imagen de este bucket (ej: Cloudinary u otra URL vieja)
+    const puntoExtension = imagenUrl.lastIndexOf('.webp');
+    if (puntoExtension === -1) return imagenUrl;
+    return imagenUrl.slice(0, puntoExtension) + IMG_THUMB_SUFIJO + imagenUrl.slice(puntoExtension);
+}
+
 
 // Íconos SVG (stroke="currentColor": heredan el color del texto donde se usen)
 const ICONO_SVG_BILLETES =
@@ -427,6 +452,16 @@ function debounce(fn, espera = 350) {
         .cp-confirm-ok:hover { background: #facc15; color: #000; }
         .cp-confirm-ok.peligro { background: #dc2626; }
         .cp-confirm-ok.peligro:hover { background: #b91c1c; }
+
+        .cp-aviso-textarea {
+            width: 100%; min-height: 110px; resize: vertical;
+            border: 1.5px solid #e2e8f0; border-radius: 12px;
+            padding: 0.75rem; font-family: inherit, sans-serif;
+            font-size: 0.85rem; color: #0f172a; margin: 0 0 1.25rem;
+            box-sizing: border-box;
+        }
+        .cp-aviso-textarea:focus { outline: none; border-color: #0b0c10; }
+        .cp-aviso-icono { font-size: 2rem; margin-bottom: 0.5rem; }
     `;
     document.head.appendChild(style);
 
@@ -508,13 +543,160 @@ function confirmarAccion(mensaje, opciones = {}) {
 
         const cerrar = (resultado) => {
             overlay.remove();
-            document.body.classList.remove('overflow-hidden');
+            if (typeof desbloquearScrollBody === 'function') {
+                desbloquearScrollBody();
+            } else {
+                document.body.classList.remove('overflow-hidden');
+            }
             resolve(resultado);
         };
         btnCancelar.addEventListener('click', () => cerrar(false));
         btnOk.addEventListener('click', () => cerrar(true));
 
-        document.body.classList.add('overflow-hidden');
+        if (typeof bloquearScrollBody === 'function') {
+            bloquearScrollBody();
+        } else {
+            document.body.classList.add('overflow-hidden');
+        }
         document.body.appendChild(overlay);
     });
+}
+
+// ============================================================
+// AVISOS INDIVIDUALES (admin -> un emprendedor puntual)
+// ============================================================
+
+// Modal para que el admin escriba el mensaje de un aviso individual
+// (reemplaza prompt()). Devuelve el texto escrito, o null si canceló.
+// Uso: const mensaje = await pedirAviso('Nombre de la tienda');
+function pedirAviso(nombreTienda) {
+    return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'cp-confirm-overlay';
+
+        const box = document.createElement('div');
+        box.className = 'cp-confirm-box';
+
+        const pTitulo = document.createElement('p');
+        pTitulo.className = 'cp-confirm-title';
+        pTitulo.textContent = `Enviar aviso a ${nombreTienda}`;
+
+        const pMsg = document.createElement('p');
+        pMsg.className = 'cp-confirm-msg';
+        pMsg.textContent = 'Le va a aparecer como un mensaje emergente la próxima vez que entre a su panel (o al toque, si ya está adentro).';
+
+        const textarea = document.createElement('textarea');
+        textarea.className = 'cp-aviso-textarea';
+        textarea.placeholder = 'Ej: Che, vimos que todavía no cargaste tu foto de perfil. Subila para que los compradores confíen más en tu tienda 📸';
+        textarea.maxLength = 500;
+
+        const acciones = document.createElement('div');
+        acciones.className = 'cp-confirm-actions';
+
+        const btnCancelar = document.createElement('button');
+        btnCancelar.type = 'button';
+        btnCancelar.className = 'cp-confirm-cancel';
+        btnCancelar.textContent = 'Cancelar';
+
+        const btnOk = document.createElement('button');
+        btnOk.type = 'button';
+        btnOk.className = 'cp-confirm-ok';
+        btnOk.textContent = 'Enviar aviso';
+
+        acciones.append(btnCancelar, btnOk);
+        box.append(pTitulo, pMsg, textarea, acciones);
+        overlay.appendChild(box);
+
+        const cerrar = (resultado) => {
+            overlay.remove();
+            if (typeof desbloquearScrollBody === 'function') {
+                desbloquearScrollBody();
+            } else {
+                document.body.classList.remove('overflow-hidden');
+            }
+            resolve(resultado);
+        };
+        btnCancelar.addEventListener('click', () => cerrar(null));
+        btnOk.addEventListener('click', () => {
+            const texto = textarea.value.trim();
+            if (!texto) { textarea.focus(); return; }
+            cerrar(texto);
+        });
+
+        if (typeof bloquearScrollBody === 'function') {
+            bloquearScrollBody();
+        } else {
+            document.body.classList.add('overflow-hidden');
+        }
+        document.body.appendChild(overlay);
+        setTimeout(() => textarea.focus(), 50);
+    });
+}
+
+function mostrarAvisoModal(mensaje) {
+    return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'cp-confirm-overlay';
+
+        const box = document.createElement('div');
+        box.className = 'cp-confirm-box';
+        box.style.textAlign = 'center';
+
+        const icono = document.createElement('div');
+        icono.className = 'cp-aviso-icono';
+        icono.textContent = '📣';
+
+        const pTitulo = document.createElement('p');
+        pTitulo.className = 'cp-confirm-title';
+        pTitulo.textContent = 'Tenés un aviso';
+
+        const pMsg = document.createElement('p');
+        pMsg.className = 'cp-confirm-msg';
+        pMsg.textContent = mensaje;
+        pMsg.style.whiteSpace = 'pre-wrap';
+        pMsg.style.textAlign = 'left';
+
+        const btnOk = document.createElement('button');
+        btnOk.type = 'button';
+        btnOk.className = 'cp-confirm-ok';
+        btnOk.style.width = '100%';
+        btnOk.textContent = 'Entendido';
+
+        box.append(icono, pTitulo, pMsg, btnOk);
+        overlay.appendChild(box);
+
+        const cerrar = () => {
+            overlay.remove();
+            if (typeof desbloquearScrollBody === 'function') {
+                desbloquearScrollBody();
+            } else {
+                document.body.classList.remove('overflow-hidden');
+            }
+            resolve();
+        };
+        btnOk.addEventListener('click', cerrar);
+
+        if (typeof bloquearScrollBody === 'function') {
+            bloquearScrollBody();
+        } else {
+            document.body.classList.add('overflow-hidden');
+        }
+        document.body.appendChild(overlay);
+    });
+}
+async function mostrarAvisosPendientes(emprendedorId) {
+    const { data, error } = await supabase
+        .from('avisos_admin')
+        .select('*')
+        .eq('emprendedor_id', emprendedorId)
+        .eq('leido', false)
+        .order('creado_en', { ascending: true });
+
+    if (error) { console.error('Error trayendo avisos:', error); return; }
+    if (!data || data.length === 0) return;
+
+    for (const aviso of data) {
+        await mostrarAvisoModal(aviso.mensaje);
+        await supabase.from('avisos_admin').update({ leido: true }).eq('id', aviso.id);
+    }
 }
