@@ -569,7 +569,7 @@ function pintarGridProductos() {
     grid.innerHTML = productos.map(p => `
         <div class="group bg-white rounded-xl sm:rounded-2xl border ${p.destacado ? 'border-yellow-400 ring-1 ring-yellow-400/70 shadow-md shadow-yellow-400/10' : 'border-slate-200 hover:border-slate-300'} shadow-sm hover:shadow-lg hover:shadow-slate-900/5 transition-all duration-300 overflow-hidden flex flex-col">
             <div class="relative aspect-square bg-slate-100 overflow-hidden">
-                <img src="${urlThumbProducto(miniaturaCloudinary(p.imagen_url, 400))}" alt="${escapeHtml(p.nombre)}" class="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500" loading="lazy" decoding="async">
+                <img src="${urlThumbProducto(miniaturaCloudinary(p.imagen_url, 400))}" alt="${escapeHtml(p.nombre)}" class="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500" loading="lazy" decoding="async" onerror="${onerrorFallbackThumb(miniaturaCloudinary(p.imagen_url, 400))}">
                 <span class="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 flex items-center gap-1 text-[8px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-full backdrop-blur-sm ${p.activo ? 'bg-emerald-500/90 text-white' : 'bg-slate-900/75 text-white'}">
                     <span class="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white/90"></span>
                     ${p.activo ? 'Visible' : 'Sin stock'}
