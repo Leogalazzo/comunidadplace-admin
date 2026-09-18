@@ -53,6 +53,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     await renderProductos(true);
 
     iniciarRealtimeDashboard();
+
+    // Avisos individuales del admin (ej. "cargá tu foto de perfil"). Si
+    // todavía no aceptó los Términos, ese modal ya está ocupando la
+    // pantalla -> esperamos a que entre de nuevo con los términos
+    // aceptados para no superponer dos modales.
+    if (emprendedorActual && emprendedorActual.terminos_aceptados === true) {
+        mostrarAvisosPendientes(perfilActual.id);
+    }
 });
 
 
@@ -83,6 +91,14 @@ function iniciarRealtimeDashboard() {
     // panel queda abierto en una pestaña y el plazo se cumple mientras
     // tanto (sin que nadie lo edite desde el admin).
     setInterval(() => evaluarAccesoYAvisar(emprendedorActual), 5 * 60 * 1000);
+
+    // Si el admin le manda un aviso individual mientras está en el panel,
+    // se lo mostramos al toque sin esperar a que recargue.
+    suscribirTabla('avisos_admin', (payload) => {
+        if (payload?.eventType === 'INSERT' && payload.new && !payload.new.leido) {
+            mostrarAvisosPendientes(perfilActual.id);
+        }
+    }, `emprendedor_id=eq.${perfilActual.id}`);
 }
 
 // ============================================================
@@ -553,7 +569,7 @@ function pintarGridProductos() {
     grid.innerHTML = productos.map(p => `
         <div class="group bg-white rounded-xl sm:rounded-2xl border ${p.destacado ? 'border-yellow-400 ring-1 ring-yellow-400/70 shadow-md shadow-yellow-400/10' : 'border-slate-200 hover:border-slate-300'} shadow-sm hover:shadow-lg hover:shadow-slate-900/5 transition-all duration-300 overflow-hidden flex flex-col">
             <div class="relative aspect-square bg-slate-100 overflow-hidden">
-                <img src="${miniaturaCloudinary(p.imagen_url, 400)}" alt="${escapeHtml(p.nombre)}" class="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500" loading="lazy" decoding="async">
+                <img src="${urlThumbProducto(miniaturaCloudinary(p.imagen_url, 400))}" alt="${escapeHtml(p.nombre)}" class="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500" loading="lazy" decoding="async">
                 <span class="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 flex items-center gap-1 text-[8px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-full backdrop-blur-sm ${p.activo ? 'bg-emerald-500/90 text-white' : 'bg-slate-900/75 text-white'}">
                     <span class="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white/90"></span>
                     ${p.activo ? 'Visible' : 'Sin stock'}
