@@ -992,11 +992,13 @@ const POSTULACION_TIPO_LABEL = {
     emprendedor: 'Emprendedor',
     comercio_vender: 'Comercio · Vender',
     comercio_membresia: 'Comercio · Membresía',
+    solo_beneficios: 'Beneficios',
 };
 const POSTULACION_TIPO_COLOR = {
     emprendedor: 'bg-yellow-100 text-yellow-800',
     comercio_vender: 'bg-blue-100 text-blue-700',
     comercio_membresia: 'bg-purple-100 text-purple-700',
+    solo_beneficios: 'bg-pink-100 text-pink-700',
 };
 const POSTULACION_ESTADO_LABEL = {
     pendiente: 'Pendiente',
@@ -1066,6 +1068,8 @@ function renderPostulaciones() {
         lista = lista.filter(p => p.tipo === 'emprendedor');
     } else if (filtroTipoPostulacionesActual === 'comercio') {
         lista = lista.filter(p => p.tipo === 'comercio_vender' || p.tipo === 'comercio_membresia');
+    } else if (filtroTipoPostulacionesActual === 'solo_beneficios') {
+        lista = lista.filter(p => p.tipo === 'solo_beneficios');
     }
     if (filtroEstadoPostulacionesActual !== 'todos') {
         lista = lista.filter(p => p.estado === filtroEstadoPostulacionesActual);
