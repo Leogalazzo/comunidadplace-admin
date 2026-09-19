@@ -60,6 +60,72 @@
             to { opacity: 1; transform: translateY(0); } 
         }
         .animate-fade-in { animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        /* ============================================================
+           ANIMACIONES DE MODALES — entrada y salida suaves
+           ------------------------------------------------------------
+           Antes estos modales pasaban de display:none a flex de golpe
+           (o al revés), así que aparecían/desaparecían "de la nada" sin
+           ninguna transición. Acá los modales que usan la clase Tailwind
+           "hidden" para mostrarse/ocultarse (modal-instructivo,
+           modal-terminos, modal-vencimiento, modal-pago-suscripcion,
+           modal-pago-exitoso) pasan a controlarse por opacidad/escala:
+           dejan de usar display:none (que no se puede animar) y en su
+           lugar el fondo hace fade y el panel entra con una leve subida
+           + escala, y a la inversa al cerrar. El JS no cambia: sigue
+           agregando/quitando la misma clase "hidden".
+           ============================================================ */
+        .modal-overlay.hidden {
+            display: flex !important;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .modal-overlay:not(.hidden) {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+        .modal-overlay {
+            transition: opacity .3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear .3s;
+        }
+        .modal-overlay:not(.hidden) {
+            transition: opacity .3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear 0s;
+        }
+        /* El panel (la "tarjeta" blanca) entra con una sutil subida + escala,
+           desfasada apenas del fondo para que se sienta como una sola pieza
+           en vez de dos animaciones separadas. */
+        .modal-panel {
+            transform: translateY(22px) scale(0.96);
+            opacity: 0;
+            transition: transform .34s cubic-bezier(0.16, 1, 0.3, 1), opacity .26s ease-out;
+        }
+        .modal-overlay:not(.hidden) .modal-panel {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .modal-overlay, .modal-overlay .modal-panel { transition-duration: 0.01ms !important; }
+        }
+
+        /* ============================================================
+           FEEDBACK AL PRESIONAR BOTONES
+           ------------------------------------------------------------
+           Todos los botones que ya usan "active:scale-*" de Tailwind
+           quedaban con la curva/duración por defecto (150ms, ease
+           genérico), que se siente un poco plana. Acá se las pisa para
+           que el achique al presionar sea más inmediato y el rebote al
+           soltar tenga un mínimo de "vida" (overshoot sutil), sin tener
+           que tocar botón por botón. El selector matchea por el literal
+           de la clase, así que sólo afecta a los elementos que ya
+           declaran ese comportamiento. */
+        [class*="active:scale-"] {
+            transition-duration: 120ms;
+            transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            [class*="active:scale-"] { transition-duration: 0.01ms !important; }
+        }
         
         /* ============================================================
            CREDENCIAL DIGITAL — tarjeta minimalista (ver #credencial-card
@@ -115,12 +181,25 @@
             height: 100dvh;
             height: var(--app-height, 100dvh);
             background: rgba(11, 12, 16, 0.75);
-            display: none;
+            /* Antes: display:none / .open{display:flex}, un corte seco sin
+               transición posible (display no se anima). Ahora queda siempre
+               en flex y se muestra/oculta con opacidad + visibility, así el
+               fondo puede hacer fade in/out real al abrir y cerrar. */
+            display: flex;
             align-items: center;
             justify-content: center;
             padding: 1.25rem;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity .3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear .3s;
         }
-        #modal-form.open { display: flex; }
+        #modal-form.open {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transition: opacity .3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear 0s;
+        }
 
         #modal-form .modal {
             background: var(--mp-surface);
@@ -135,6 +214,18 @@
             overflow: hidden;
             box-shadow: 0 24px 70px rgba(0,0,0,0.35);
             border: 1px solid rgba(255,255,255,0.08);
+            /* Entrada/salida del panel: leve subida + escala, en sincro con
+               el fade del fondo de arriba. */
+            transform: translateY(24px) scale(0.96);
+            opacity: 0;
+            transition: transform .36s cubic-bezier(0.16, 1, 0.3, 1), opacity .28s ease-out;
+        }
+        #modal-form.open .modal {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #modal-form, #modal-form .modal { transition-duration: 0.01ms !important; }
         }
 
         #modal-form .modal-header {
@@ -150,9 +241,10 @@
             background: var(--mp-surface-2); border: 1px solid var(--mp-border);
             color: var(--mp-text-muted);
             display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: all .15s;
+            cursor: pointer; transition: background-color .15s, color .15s, transform .12s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         #modal-form .modal-close:hover { background: var(--mp-border); color: var(--mp-text); }
+        #modal-form .modal-close:active { transform: scale(0.9); }
 
         #modal-form .modal-body {
             flex: 1; overflow-y: auto; overscroll-behavior: contain;
@@ -355,7 +447,8 @@
         #modal-form .empty-variants button { font-size: 0.75rem; font-weight: 700; color: var(--mp-accent-ink); background: none; border: none; cursor: pointer; text-decoration: underline; white-space: nowrap; }
 
         /* Botones */
-        #modal-form .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.7rem 1rem; border-radius: var(--mp-radius-sm); border: none; cursor: pointer; transition: all .15s; }
+        #modal-form .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.7rem 1rem; border-radius: var(--mp-radius-sm); border: none; cursor: pointer; transition: background-color .15s, color .15s, border-color .15s, opacity .15s, transform .12s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        #modal-form .btn:active:not(:disabled) { transform: scale(0.96); }
         #modal-form .btn-primary { background: var(--mp-dark); color: #fff; flex: 2; }
         #modal-form .btn-primary:hover { background: var(--mp-accent); color: var(--mp-dark); }
         #modal-form .btn-primary:disabled { opacity: 0.6; cursor: default; }
@@ -377,6 +470,13 @@
                 max-height: 92dvh;
                 max-width: 100%;
                 position: relative;
+                /* En mobile el panel entra como hoja deslizando desde abajo
+                   en vez de aparecer con escala, que se siente más natural
+                   para un bottom sheet. */
+                transform: translateY(100%);
+            }
+            #modal-form.open .modal {
+                transform: translateY(0);
             }
             /* Manija visual: deja claro que es una hoja que se puede deslizar/cerrar, no la pantalla entera */
             #modal-form .modal::before {
@@ -611,6 +711,12 @@
                 max-height: 94vh; max-height: 92dvh;
                 max-width: 100%; width: 100%;
                 position: relative;
+                /* Bottom sheet: entra deslizando desde abajo en vez de con
+                   escala, igual que el modal de producto en mobile. */
+                transform: translateY(100%);
+            }
+            #modal-pago-suscripcion:not(.hidden) .mps-sheet {
+                transform: translateY(0);
             }
             #modal-pago-suscripcion .mps-handle {
                 display: block; position: absolute; top: 0.55rem; left: 50%; transform: translateX(-50%);
@@ -762,7 +868,7 @@
 
             <!-- Footer Sidebar / Cerrar Sesión (siempre visible) -->
             <div class="pt-6 border-t border-white/10 mt-6 flex-shrink-0">
-                <button onclick="confirmarCerrarSesion()" class="w-full flex items-center justify-center gap-2 text-rose-400 hover:text-white hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 px-4 py-3 rounded-xl text-xs uppercase tracking-wider font-bold transition-all">
+                <button onclick="confirmarCerrarSesion()" class="w-full flex items-center justify-center gap-2 text-rose-400 hover:text-white hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 px-4 py-3 rounded-xl text-xs uppercase tracking-wider font-bold transition-all active:scale-95">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                     <span>Cerrar Sesión</span>
                 </button>
@@ -1590,10 +1696,10 @@
     </div>
 
     <!-- MODAL TÉRMINOS Y CONDICIONES -->
-    <div id="modal-instructivo" onclick="if (event.target === this) cerrarInstructivo()" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-0 sm:p-6">
+    <div id="modal-instructivo" onclick="if (event.target === this) cerrarInstructivo()" class="modal-overlay fixed inset-0 z-[60] hidden flex items-center justify-center p-0 sm:p-6">
         <div class="absolute inset-0 bg-obsidian/85"></div>
 
-        <div class="bg-white w-full max-w-3xl h-[100dvh] sm:h-[85vh] rounded-none sm:rounded-3xl relative z-10 shadow-2xl border border-white/20 animate-fade-in flex flex-col overflow-hidden">
+        <div class="modal-panel bg-white w-full max-w-3xl h-[100dvh] sm:h-[85vh] rounded-none sm:rounded-3xl relative z-10 shadow-2xl border border-white/20 flex flex-col overflow-hidden">
             <div class="px-5 sm:px-8 py-4 sm:py-5 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
                 <div>
                     <h2 class="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">Instructivo de uso</h2>
@@ -1613,10 +1719,10 @@
         </div>
     </div>
 
-    <div id="modal-terminos" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4 sm:p-6">
+    <div id="modal-terminos" class="modal-overlay fixed inset-0 z-[60] hidden flex items-center justify-center p-4 sm:p-6">
         <div class="absolute inset-0 bg-obsidian/85"></div>
 
-        <div class="bg-white w-full max-w-lg rounded-3xl relative z-10 shadow-2xl border border-white/20 animate-fade-in flex flex-col max-h-[85vh]">
+        <div class="modal-panel bg-white w-full max-w-lg rounded-3xl relative z-10 shadow-2xl border border-white/20 flex flex-col max-h-[85vh]">
             <div class="p-6 sm:p-8 pb-4 border-b border-slate-100 flex-shrink-0">
                 <h2 class="text-xl font-extrabold text-slate-900 uppercase tracking-tight">Términos y Condiciones</h2>
                 <p class="text-xs text-slate-400 mt-0.5">Leé y elegí una opción para poder seguir usando tu panel</p>
@@ -1771,7 +1877,7 @@
          Sólo avisa una vez al ingresar; el aviso persistente queda a cargo
          del banner de arriba (#banner-tienda-bloqueada), que es el que
          refleja el bloqueo real de la tienda en la comunidad. -->
-    <div id="modal-vencimiento" onclick="if (event.target === this) cerrarModalVencimiento()" class="fixed inset-0 z-[80] hidden flex items-center justify-center p-4 sm:p-6">
+    <div id="modal-vencimiento" onclick="if (event.target === this) cerrarModalVencimiento()" class="modal-overlay fixed inset-0 z-[80] hidden flex items-center justify-center p-4 sm:p-6">
         <!-- Fondo sólido en vez de backdrop-blur: el blur obliga al navegador a
              re-samplear todo el dashboard detrás en cada frame mientras el modal
              anima su entrada, lo que se siente como lag (sobre todo en Android
@@ -1779,7 +1885,7 @@
              sólido semi-transparente sin blur. -->
         <div class="absolute inset-0 bg-slate-950/80"></div>
 
-        <div class="bg-white w-full max-w-sm rounded-[28px] relative z-10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] overflow-hidden animate-fade-in">
+        <div class="modal-panel bg-white w-full max-w-sm rounded-[28px] relative z-10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] overflow-hidden">
             <!-- Franja superior de acento -->
             <div id="modal-vencimiento-franja" class="h-1.5 w-full bg-gradient-to-r from-red-500 via-rose-500 to-red-500"></div>
 
@@ -1816,7 +1922,7 @@
          Reemplaza la redirección a mercadopago.com: el formulario de
          tarjeta se monta acá mismo, dentro del panel. No se abre ni la
          app ni el navegador de MercadoPago en ningún dispositivo. -->
-    <div id="modal-pago-suscripcion" onclick="if (event.target === this) cerrarModalPagoSuscripcion()" class="fixed inset-0 z-[85] hidden flex items-center justify-center p-4 sm:p-6">
+    <div id="modal-pago-suscripcion" onclick="if (event.target === this) cerrarModalPagoSuscripcion()" class="modal-overlay fixed inset-0 z-[85] hidden flex items-center justify-center p-4 sm:p-6">
         <!-- Sin backdrop-blur: acá es donde más importa, porque justo cuando
              se abre este modal también se dispara el fetch de config, se crea
              la instancia de MercadoPago y se monta el iframe del Brick — todo
@@ -1824,7 +1930,7 @@
              recalcularse en cada frame. -->
         <div class="absolute inset-0 bg-slate-950/80"></div>
 
-        <div class="mps-sheet bg-white w-full max-w-md sm:max-w-lg rounded-[28px] relative z-10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] overflow-hidden animate-fade-in flex flex-col">
+        <div class="modal-panel mps-sheet bg-white w-full max-w-md sm:max-w-lg rounded-[28px] relative z-10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] overflow-hidden flex flex-col">
             <div class="mps-handle"></div>
             <div class="h-1.5 w-full bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-400 flex-shrink-0"></div>
 
@@ -1885,10 +1991,10 @@
          merece más presencia que un toast que pasa y se pierde, así que
          quedó como modal propio, mismo lenguaje visual que
          #modal-vencimiento pero en verde. -->
-    <div id="modal-pago-exitoso" onclick="if (event.target === this) cerrarModalPagoExitoso()" class="fixed inset-0 z-[90] hidden flex items-center justify-center p-4 sm:p-6">
+    <div id="modal-pago-exitoso" onclick="if (event.target === this) cerrarModalPagoExitoso()" class="modal-overlay fixed inset-0 z-[90] hidden flex items-center justify-center p-4 sm:p-6">
         <div class="absolute inset-0 bg-slate-950/80"></div>
 
-        <div class="bg-white w-full max-w-sm rounded-[28px] relative z-10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] overflow-hidden animate-fade-in">
+        <div class="modal-panel bg-white w-full max-w-sm rounded-[28px] relative z-10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] overflow-hidden">
             <div class="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-500"></div>
 
             <button type="button" onclick="cerrarModalPagoExitoso()" aria-label="Cerrar" class="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center bg-slate-100/80 text-slate-400 hover:text-slate-700 hover:bg-slate-200 active:scale-90 transition-all">
