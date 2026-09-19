@@ -190,35 +190,14 @@ function miniaturaCloudinary(url, size = 60) {
 // ------------------------------------------------------------
 // A diferencia de Cloudinary, el bucket de Storage no redimensiona al vuelo
 // en el plan free: la miniatura se sube como archivo aparte al cargar la
-// foto (ver image-upload.js, solo cargado en dashboard.html). Esta función
-// SÍ hace falta en todas las páginas que muestran productos (catálogo,
-// tienda, panel), por eso vive acá y no en image-upload.js.
-const BUCKET_PRODUCTOS = 'productos-imagenes';
-const IMG_THUMB_SUFIJO = '-thumb';
-
-// Dado el imagen_url completa guardada en la fila del producto, arma la URL
-// de su miniatura liviana para usar en las cards de grilla. Si la imagen es
-// de antes de este cambio (no tiene thumb subido), cae de vuelta a la
-// imagen completa: no rompe nada de lo que ya estaba cargado.
-function urlThumbProducto(imagenUrl) {
-    if (!imagenUrl) return imagenUrl;
-    const marcador = `/${BUCKET_PRODUCTOS}/`;
-    const idx = imagenUrl.indexOf(marcador);
-    if (idx === -1) return imagenUrl; // no es una imagen de este bucket (ej: Cloudinary u otra URL vieja)
-    const puntoExtension = imagenUrl.lastIndexOf('.webp');
-    if (puntoExtension === -1) return imagenUrl;
-    return imagenUrl.slice(0, puntoExtension) + IMG_THUMB_SUFIJO + imagenUrl.slice(puntoExtension);
-}
-
-// Atributo onerror para pegar en un <img> cuyo src es un thumb de producto:
-// si el thumb no existe (404 -> productos cargados antes de tener miniatura,
-// o el archivo se borró), cae una sola vez a la imagen completa en vez de
-// quedar con el ícono de imagen rota. "this.onerror=null" evita loop si la
-// imagen completa tampoco carga. urlCompleta va siempre escapada con
-// comillas simples porque este atributo se inserta dentro de un src="...".
-function onerrorFallbackThumb(urlCompleta) {
-    const escapada = String(urlCompleta || '').replace(/'/g, '&#39;');
-    return `this.onerror=null; this.src='${escapada}';`;
+// foto (ver image-upload.js, solo cargado en dashboard.html) y su URL
+// queda guardada en la columna imagen_thumb_url de la fila del producto.
+// Si esa columna está vacía (productos cargados antes de este cambio, o
+// falló la subida del thumb puntual), usa directamente la imagen completa
+// — nunca "adivina" un nombre de archivo, así que nunca puede dar 404.
+function urlGrillaProducto(p, size = 400) {
+    if (!p) return '';
+    return miniaturaCloudinary(p.imagen_thumb_url || p.imagen_url, size);
 }
 
 
@@ -472,7 +451,52 @@ function debounce(fn, espera = 350) {
             box-sizing: border-box;
         }
         .cp-aviso-textarea:focus { outline: none; border-color: #0b0c10; }
-        .cp-aviso-icono { font-size: 2rem; margin-bottom: 0.5rem; }
+
+        /* Modal de aviso del admin: mismo acento amarillo/obsidiana que el
+           resto del panel (botón "Enviar aviso", banners de anuncio), pero
+           con más peso visual para que se note que es un mensaje, no una
+           confirmación cualquiera. */
+        .cp-aviso-box {
+            border-top: 5px solid #facc15;
+            padding-top: 1.5rem;
+        }
+        .cp-aviso-icono {
+            width: 60px; height: 60px; border-radius: 9999px;
+            background: linear-gradient(135deg, #fef08a, #facc15);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.6rem; margin: 0 auto 0.9rem;
+            box-shadow: 0 8px 18px -6px rgba(250, 204, 21, 0.55);
+        }
+        .cp-aviso-remitente {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            font-size: 0.65rem; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 0.06em; color: #92400e;
+            background: #fffbeb; border: 1px solid #fde68a;
+            padding: 0.3rem 0.7rem; border-radius: 9999px;
+            margin: 0 0 1.5rem;
+        }
+        .cp-aviso-msg-box {
+            background: #f8fafc; border: 1px solid #eef2f6;
+            border-radius: 14px; padding: 0.9rem 1rem;
+            margin: 0 0 0.75rem;
+        }
+        .cp-aviso-btn {
+            display: flex; align-items: center; justify-content: center;
+            gap: 0.4rem;
+            background: #0b0c10; color: #facc15;
+            border-radius: 16px; padding: 0.95rem;
+            font-weight: 800; font-size: 0.75rem;
+            text-transform: uppercase; letter-spacing: 0.06em;
+            border: none; cursor: pointer;
+            box-shadow: 0 10px 20px -8px rgba(11, 12, 16, 0.45);
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+        }
+        .cp-aviso-btn:hover {
+            background: #facc15; color: #0b0c10;
+            transform: translateY(-1px);
+            box-shadow: 0 12px 22px -8px rgba(250, 204, 21, 0.55);
+        }
+        .cp-aviso-btn:active { transform: translateY(0); }
     `;
     document.head.appendChild(style);
 
@@ -650,7 +674,7 @@ function mostrarAvisoModal(mensaje) {
         overlay.className = 'cp-confirm-overlay';
 
         const box = document.createElement('div');
-        box.className = 'cp-confirm-box';
+        box.className = 'cp-confirm-box cp-aviso-box';
         box.style.textAlign = 'center';
 
         const icono = document.createElement('div');
@@ -659,21 +683,36 @@ function mostrarAvisoModal(mensaje) {
 
         const pTitulo = document.createElement('p');
         pTitulo.className = 'cp-confirm-title';
-        pTitulo.textContent = 'Tenés un aviso';
+        pTitulo.style.textAlign = 'center';
+        pTitulo.textContent = 'Importante';
+
+        // Este remitente es fijo: por ahora sólo el administrador puede
+        // enviar este tipo de aviso (ver enviarAvisoIndividual en admin.js),
+        // así que no hace falta guardarlo en la fila de avisos_admin ni
+        // pasarlo como parámetro. Si en el futuro otros roles pudieran
+        // mandar avisos, esto tendría que volverse dinámico.
+        const pRemitente = document.createElement('p');
+        pRemitente.className = 'cp-aviso-remitente';
+        pRemitente.innerHTML = 'Aviso de Admin.';
+
+        const msgBox = document.createElement('div');
+        msgBox.className = 'cp-aviso-msg-box';
 
         const pMsg = document.createElement('p');
         pMsg.className = 'cp-confirm-msg';
         pMsg.textContent = mensaje;
         pMsg.style.whiteSpace = 'pre-wrap';
         pMsg.style.textAlign = 'left';
+        pMsg.style.margin = '0';
+        msgBox.appendChild(pMsg);
 
         const btnOk = document.createElement('button');
         btnOk.type = 'button';
-        btnOk.className = 'cp-confirm-ok';
+        btnOk.className = 'cp-aviso-btn';
         btnOk.style.width = '100%';
-        btnOk.textContent = 'Entendido';
+        btnOk.innerHTML = '✓ Entendido';
 
-        box.append(icono, pTitulo, pMsg, btnOk);
+        box.append(icono, pTitulo, pRemitente, msgBox, btnOk);
         overlay.appendChild(box);
 
         const cerrar = () => {
