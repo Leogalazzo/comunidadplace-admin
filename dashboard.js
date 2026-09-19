@@ -3,6 +3,12 @@ let emprendedorActual = null; // fila de emprendedores
 let cuentaSoloBeneficios = false; // true si emprendedorActual.solo_beneficios; mostrarSeccion() lo usa para no destapar nunca los ítems de venta del menú
 let categorias = [];
 let productoEditandoId = null; // null = creando, uuid = editando
+// URL de la miniatura del producto que se está creando/editando ahora mismo
+// en el formulario (columna imagen_thumb_url). Viaja aparte del hidden
+// input #imagen (que solo tiene la imagen completa) porque agregar un
+// input nuevo al HTML no hacía falta: alcanza con este estado en memoria,
+// que se resetea junto con el resto del formulario en cada apertura/cierre.
+let imagenThumbUrlActual = '';
 let variantesEnEdicion = [];   // [{id?, nombre, valor, precio_adicional, _borrar?}]
 let variantesEliminadas = [];  // ids de variantes existentes que se quitaron y hay que borrar en Supabase al guardar
 let mediosPagoPerfilSeleccion = [];   // ids seleccionados en "Mi Perfil"
@@ -569,7 +575,7 @@ function pintarGridProductos() {
     grid.innerHTML = productos.map(p => `
         <div class="group bg-white rounded-xl sm:rounded-2xl border ${p.destacado ? 'border-yellow-400 ring-1 ring-yellow-400/70 shadow-md shadow-yellow-400/10' : 'border-slate-200 hover:border-slate-300'} shadow-sm hover:shadow-lg hover:shadow-slate-900/5 transition-all duration-300 overflow-hidden flex flex-col">
             <div class="relative aspect-square bg-slate-100 overflow-hidden">
-                <img src="${urlThumbProducto(miniaturaCloudinary(p.imagen_url, 400))}" alt="${escapeHtml(p.nombre)}" class="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500" loading="lazy" decoding="async" onerror="${onerrorFallbackThumb(miniaturaCloudinary(p.imagen_url, 400))}">
+                <img src="${urlGrillaProducto(p, 400)}" alt="${escapeHtml(p.nombre)}" class="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500" loading="lazy" decoding="async">
                 <span class="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 flex items-center gap-1 text-[8px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-full backdrop-blur-sm ${p.activo ? 'bg-emerald-500/90 text-white' : 'bg-slate-900/75 text-white'}">
                     <span class="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white/90"></span>
                     ${p.activo ? 'Visible' : 'Sin stock'}
@@ -697,6 +703,7 @@ function toggleMedioPagoProducto(id) {
 // ============================================================
 function abrirFormulario() {
     productoEditandoId = null;
+    imagenThumbUrlActual = '';
     variantesEnEdicion = [];
     variantesEliminadas = [];
     mediosPagoProductoSeleccion = [];
@@ -771,6 +778,7 @@ function cerrarFormulario() {
     modal.style.top = '';
     form.reset();
     document.getElementById('imagen').value = '';
+    imagenThumbUrlActual = '';
     productoEditandoId = null;
     variantesEnEdicion = [];
     variantesEliminadas = [];
@@ -794,14 +802,16 @@ async function manejarSeleccionImagenProducto(event) {
     }
 
     const urlAnterior = document.getElementById('imagen').value;
+    const thumbAnterior = imagenThumbUrlActual;
     mostrarSpinnerImagen('imagen-producto', true);
     try {
-        const url = await subirImagenProductoSupabase(file, perfilActual.id);
+        const { url, thumbUrl } = await subirImagenProductoSupabase(file, perfilActual.id);
         document.getElementById('imagen').value = url;
+        imagenThumbUrlActual = thumbUrl || '';
         actualizarPreviewImagenProducto(url);
         // Si estábamos reemplazando una foto subida por este mismo sistema, borramos la
         // vieja (nunca la default, que es compartida por todos los productos sin foto)
-        if (urlAnterior && urlAnterior !== IMAGEN_PRODUCTO_DEFAULT) borrarImagenProductoSupabase(urlAnterior);
+        if (urlAnterior && urlAnterior !== IMAGEN_PRODUCTO_DEFAULT) borrarImagenProductoSupabase(urlAnterior, thumbAnterior);
     } catch (err) {
         console.error(err);
         mostrarToast('No se pudo subir la imagen. Probá de nuevo.', 'error');
@@ -833,6 +843,7 @@ async function editarProducto(id) {
     document.getElementById('precio_anterior').value = p.precio_anterior ? formatoPrecioInput(p.precio_anterior) : '';
     document.getElementById('categoria').value = p.categoria_id;
     document.getElementById('imagen').value = p.imagen_url || '';
+    imagenThumbUrlActual = p.imagen_thumb_url || '';
     document.getElementById('descripcion').value = p.descripcion || '';
     document.getElementById('activo').checked = p.activo;
     document.getElementById('nuevo').checked = !!p.nuevo;
@@ -882,9 +893,11 @@ function actualizarPreviewImagenProducto(url) {
 // (no la default compartida), la borra también del storage.
 function quitarImagenProducto() {
     const urlAnterior = document.getElementById('imagen').value;
+    const thumbAnterior = imagenThumbUrlActual;
     document.getElementById('imagen').value = '';
+    imagenThumbUrlActual = '';
     actualizarPreviewImagenProducto('');
-    if (urlAnterior && urlAnterior !== IMAGEN_PRODUCTO_DEFAULT) borrarImagenProductoSupabase(urlAnterior);
+    if (urlAnterior && urlAnterior !== IMAGEN_PRODUCTO_DEFAULT) borrarImagenProductoSupabase(urlAnterior, thumbAnterior);
 }
 
 // ============================================================
@@ -1052,6 +1065,7 @@ form.addEventListener('submit', async (e) => {
         precio_anterior: precioAnterior,
         categoria_id: parseInt(document.getElementById('categoria').value),
         imagen_url: imagenUrl,
+        imagen_thumb_url: imagenThumbUrlActual || null,
         descripcion: document.getElementById('descripcion').value.trim(),
         activo: todasLasVariantesSinStock ? false : activoElegido,
         medios_pago: mediosPagoProductoSeleccion
@@ -1154,6 +1168,7 @@ async function eliminarProducto(id) {
     // como string (viene del atributo onclick) y en el cache puede ser numérico.
     const producto = productosCache.find(p => String(p.id) === String(id));
     const imagenUrl = producto?.imagen_url;
+    const imagenThumbUrl = producto?.imagen_thumb_url;
 
     const { error } = await supabase.from('productos').delete().eq('id', id);
     if (error) { mostrarToast('No se pudo eliminar el producto.', 'error'); console.error(error); return; }
@@ -1164,7 +1179,7 @@ async function eliminarProducto(id) {
     // la foto default, porque es compartida por todos los productos sin imagen.
     if (imagenUrl && imagenUrl !== IMAGEN_PRODUCTO_DEFAULT) {
         try {
-            await borrarImagenProductoSupabase(imagenUrl);
+            await borrarImagenProductoSupabase(imagenUrl, imagenThumbUrl);
         } catch (err) {
             console.error('No se pudo borrar la imagen del producto eliminado:', err);
         }
