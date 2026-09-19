@@ -24,19 +24,19 @@ const IMG_CALIDAD_INICIAL = 0.8;
 const IMG_CALIDAD_MINIMA = 0.5;
 
 // Miniatura para las cards de grilla (catálogo, panel del vendedor, tienda):
-// se sube COMO ARCHIVO APARTE (mismo nombre + sufijo "-thumb"), no se pide
-// redimensionada al vuelo, porque el bucket público de Supabase Storage no
-// hace transformación de imágenes en el plan free (a diferencia de
-// Cloudinary, donde sí existe miniaturaCloudinary()). Antes de esto, las
-// cards pedían la imagen completa (hasta 300 KB) para mostrar un cuadrado
-// de ~150px, lo que infla mucho el Cached Egress del bucket.
-// NOTA: BUCKET_PRODUCTOS e IMG_THUMB_SUFIJO están declarados en
-// supabase-client.js (junto con urlThumbProducto()), no acá, porque esas
-// hacen falta en TODAS las páginas que muestran productos (catálogo,
-// tienda, panel), mientras que este archivo solo se carga en dashboard.html
-// (donde se sube la foto).
+// se sube COMO ARCHIVO APARTE, no se pide redimensionada al vuelo, porque
+// el bucket público de Supabase Storage no hace transformación de imágenes
+// en el plan free (a diferencia de Cloudinary, donde sí existe
+// miniaturaCloudinary()). La URL del thumb se guarda en la columna
+// imagen_thumb_url de la fila del producto (ver dashboard.js); si esa
+// columna está vacía (productos cargados antes de este cambio), la
+// grilla cae directo a la imagen completa — no se "adivina" ningún
+// nombre de archivo, así que nunca puede dar 404.
 const IMG_THUMB_LADO = 400;
 const IMG_THUMB_PESO_OBJETIVO_MAX = 60 * 1024; // 60 KB
+const IMG_THUMB_SUFIJO = '-thumb';
+
+const BUCKET_PRODUCTOS = 'productos-imagenes';
 
 // Un año en segundos: los nombres de archivo incluyen timestamp + random,
 // así que un archivo nunca se pisa a sí mismo -> es seguro cachearlo "para
@@ -134,6 +134,10 @@ async function comprimirImagenProductoConThumb(file) {
 // ------------------------------------------------------------
 // Bucket requerido: "productos-imagenes" (público). Ver notas al pie del
 // archivo para la configuración necesaria en el Dashboard de Supabase.
+// Devuelve { url, thumbUrl }: thumbUrl puede ser null si falló la subida
+// de la miniatura (no es crítico, ver más abajo) — quien llama a esta
+// función debe guardar ambos valores en la fila del producto
+// (imagen_url e imagen_thumb_url).
 async function subirImagenProductoSupabase(file, emprendedorId) {
     const errorValidacion = validarImagenSeleccionada(file);
     if (errorValidacion) throw new Error(errorValidacion);
@@ -148,30 +152,39 @@ async function subirImagenProductoSupabase(file, emprendedorId) {
         .upload(nombreArchivo, completa, { contentType: 'image/webp', upsert: false, cacheControl: STORAGE_CACHE_CONTROL });
     if (error) throw error;
 
+    const url = supabase.storage.from(BUCKET_PRODUCTOS).getPublicUrl(nombreArchivo).data.publicUrl;
+
     // El thumb es una optimización de bandwidth, no dato crítico: si falla
-    // la subida no cortamos el flujo (urlThumbProducto ya cae de vuelta a la
-    // imagen completa si no encuentra el thumb), solo lo logueamos.
+    // la subida no cortamos el flujo (la fila queda sin imagen_thumb_url,
+    // y la grilla cae directo a la imagen completa), solo lo logueamos.
     const { error: errorThumb } = await supabase.storage
         .from(BUCKET_PRODUCTOS)
         .upload(nombreThumb, thumb, { contentType: 'image/webp', upsert: false, cacheControl: STORAGE_CACHE_CONTROL });
-    if (errorThumb) console.error('No se pudo subir la miniatura de la imagen:', errorThumb);
+    if (errorThumb) {
+        console.error('No se pudo subir la miniatura de la imagen:', errorThumb);
+        return { url, thumbUrl: null };
+    }
 
-    const { data } = supabase.storage.from(BUCKET_PRODUCTOS).getPublicUrl(nombreArchivo);
-    return data.publicUrl;
+    const thumbUrl = supabase.storage.from(BUCKET_PRODUCTOS).getPublicUrl(nombreThumb).data.publicUrl;
+    return { url, thumbUrl };
 }
 
-// Borra una imagen de producto (y su miniatura, si existe) del bucket a
-// partir de su URL pública. No es crítico si falla (por eso no lanza error,
-// solo loguea).
-async function borrarImagenProductoSupabase(urlPublica) {
-    if (!urlPublica) return;
+// Borra una o dos imágenes de producto del bucket a partir de sus URLs
+// públicas (la completa y, si existe, su miniatura). Recibe las URLs
+// explícitas en vez de derivarlas por nombre de archivo — así nunca
+// intenta borrar (ni le erra a) un archivo que no sabemos que existe.
+// No es crítico si falla (por eso no lanza error, solo loguea).
+async function borrarImagenProductoSupabase(urlPublica, urlThumbPublica) {
     const marcador = `/${BUCKET_PRODUCTOS}/`;
-    const idx = urlPublica.indexOf(marcador);
-    if (idx === -1) return; // no es una imagen de este bucket (ej: URL vieja externa)
-    const path = urlPublica.slice(idx + marcador.length);
-    const puntoExtension = path.lastIndexOf('.webp');
-    const pathThumb = puntoExtension === -1 ? null : path.slice(0, puntoExtension) + IMG_THUMB_SUFIJO + path.slice(puntoExtension);
-    const paths = pathThumb ? [path, pathThumb] : [path];
+    const aPath = (url) => {
+        if (!url) return null;
+        const idx = url.indexOf(marcador);
+        return idx === -1 ? null : url.slice(idx + marcador.length); // null si no es de este bucket (ej: URL vieja externa)
+    };
+
+    const paths = [aPath(urlPublica), aPath(urlThumbPublica)].filter(Boolean);
+    if (paths.length === 0) return;
+
     const { error } = await supabase.storage.from(BUCKET_PRODUCTOS).remove(paths);
     if (error) console.error('No se pudo borrar la imagen anterior del storage:', error);
 }
