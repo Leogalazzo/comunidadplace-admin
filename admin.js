@@ -3,6 +3,13 @@ let emprendedoresCache = [];
 let filtroEstadoActual = 'todos';
 let busquedaActual = '';
 
+// ============================================================
+// MODO SELECCIÓN: avisos masivos (mandar el mismo aviso a varios
+// emprendedores de una, en vez de tocar el 📣 de card en card).
+// ============================================================
+let modoSeleccionAviso = false;
+let seleccionAvisoIds = new Set(); // ids (string) de emprendedores elegidos
+
 document.addEventListener('DOMContentLoaded', async () => {
     perfilAdmin = await requerirSesion('admin');
     if (!perfilAdmin) return;
@@ -170,6 +177,34 @@ function tarjetaEmprendedorHTML(e) {
         const claseBoton = bloqueadaPorPago
             ? 'bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white'
             : (e.activo ? 'bg-red-50 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white');
+
+        // En modo selección la card no abre el detalle: se toca para
+        // marcarla/desmarcarla para el aviso masivo. Se ocultan los botones
+        // de bloquear/activar para no disparar acciones por accidente
+        // mientras se está eligiendo a quién avisar.
+        if (modoSeleccionAviso) {
+            const seleccionado = seleccionAvisoIds.has(String(e.id));
+            return `
+        <div data-id-emprendedor="${e.id}"
+            class="bg-white rounded-xl sm:rounded-3xl border-2 ${seleccionado ? 'border-yellow-400' : 'border-slate-200'} shadow-sm overflow-hidden flex flex-col cursor-pointer transition-all"
+            onclick="toggleSeleccionAviso('${e.id}')">
+            <div class="relative aspect-square bg-slate-100 overflow-hidden">
+                ${avatar}
+                ${seleccionado ? '<div class="absolute inset-0 bg-yellow-400/20"></div>' : ''}
+                <span class="absolute top-2 left-2 sm:top-3 sm:left-3 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm ${badge.clase}">
+                    ${badge.texto}
+                </span>
+                <div class="absolute top-2 right-2 sm:top-3 sm:right-3 w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 flex items-center justify-center shadow-sm transition-colors ${seleccionado ? 'bg-yellow-400 border-yellow-400' : 'bg-white/90 border-slate-300'}">
+                    ${seleccionado ? '<svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>' : ''}
+                </div>
+            </div>
+            <div class="p-3 sm:p-4 flex flex-col gap-1 sm:gap-1.5">
+                <span class="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${e.usuarios ? escapeHtml(e.usuarios.usuario) : '-'}</span>
+                <h3 class="font-extrabold text-slate-900 text-sm sm:text-base leading-snug line-clamp-1">${escapeHtml(e.nombre_tienda)}</h3>
+            </div>
+        </div>
+    `;
+        }
 
         return `
         <div class="group bg-white rounded-xl sm:rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-900/5 hover:-translate-y-0.5 hover:border-slate-300 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer"
@@ -417,6 +452,88 @@ function abrirModalDetalleEmprendedor(id) {
     document.getElementById('modal-detalle-overlay').classList.add('abierto');
     document.getElementById('modal-detalle').classList.add('abierto');
     document.body.classList.add('overflow-hidden');
+}
+
+// Prende/apaga el modo selección. Mientras está activo, tocar una card
+// no abre el modal de detalle: la marca/desmarca para el envío masivo.
+function toggleModoSeleccionAviso() {
+    modoSeleccionAviso = !modoSeleccionAviso;
+    if (!modoSeleccionAviso) seleccionAvisoIds.clear();
+    actualizarUiSeleccionAviso();
+}
+
+// Sale del modo selección sin enviar nada (botón "cancelar" de la barra).
+function salirModoSeleccionAviso() {
+    modoSeleccionAviso = false;
+    seleccionAvisoIds.clear();
+    actualizarUiSeleccionAviso();
+}
+
+// Marca/desmarca un emprendedor puntual. Se llama al tocar una card
+// mientras el modo selección está activo.
+function toggleSeleccionAviso(id) {
+    const idStr = String(id);
+    if (seleccionAvisoIds.has(idStr)) seleccionAvisoIds.delete(idStr);
+    else seleccionAvisoIds.add(idStr);
+    actualizarUiSeleccionAviso();
+}
+
+// "Todos": selecciona de una todo lo que está pintado en pantalla en ese
+// momento (respeta el buscador/filtro activo, y si estás en la sección
+// Beneficios selecciona esos, no los de Emprendedores).
+function seleccionarTodosVisiblesAviso() {
+    const seccionVisible = document.querySelector('main section:not(.hidden)');
+    if (!seccionVisible) return;
+    seccionVisible.querySelectorAll('[data-id-emprendedor]').forEach(card => {
+        seleccionAvisoIds.add(card.dataset.idEmprendedor);
+    });
+    actualizarUiSeleccionAviso();
+}
+
+// Repinta todo lo que depende del modo selección: la barra flotante de
+// abajo, el estado (activo/inactivo) de los botones "Enviar aviso a
+// varios" de cada sección, y las grillas (para que las cards muestren u
+// oculten el checkbox).
+function actualizarUiSeleccionAviso() {
+    document.querySelectorAll('.btn-modo-seleccion-aviso').forEach(btn => {
+        btn.classList.toggle('bg-yellow-400', modoSeleccionAviso);
+        btn.classList.toggle('border-yellow-400', modoSeleccionAviso);
+        btn.classList.toggle('text-black', modoSeleccionAviso);
+    });
+
+    const barra = document.getElementById('barra-seleccion-aviso');
+    if (barra) {
+        barra.classList.toggle('hidden', !modoSeleccionAviso);
+        const n = seleccionAvisoIds.size;
+        document.getElementById('contador-seleccion-aviso').textContent =
+            `${n} seleccionado${n === 1 ? '' : 's'}`;
+    }
+
+    renderEmprendedores();
+    renderBeneficios();
+}
+
+// Manda el mismo aviso a todos los emprendedores seleccionados: una sola
+// tanda de inserts a avisos_admin (una fila por destinatario, mismo
+// mensaje), reutilizando el modal de pedirAviso que ya existe para el
+// envío individual.
+async function enviarAvisoMasivo() {
+    const ids = Array.from(seleccionAvisoIds);
+    if (ids.length === 0) return;
+
+    const destinoTexto = ids.length === 1
+        ? (emprendedoresCache.find(x => String(x.id) === ids[0])?.nombre_tienda || 'este emprendedor')
+        : `${ids.length} emprendedores seleccionados`;
+
+    const mensaje = await pedirAviso(destinoTexto);
+    if (!mensaje) return;
+
+    const filas = ids.map(id => ({ emprendedor_id: id, mensaje }));
+    const { error } = await supabase.from('avisos_admin').insert(filas);
+    if (error) { mostrarToast('No se pudo enviar el aviso.', 'error'); console.error(error); return; }
+
+    mostrarToast(`Aviso enviado a ${ids.length} emprendedor${ids.length === 1 ? '' : 'es'}.`, 'success');
+    salirModoSeleccionAviso();
 }
 
 // Manda un aviso individual (mensaje emergente) a un emprendedor puntual.
