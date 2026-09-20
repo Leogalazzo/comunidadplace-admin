@@ -152,60 +152,78 @@ html.pwa-standalone .pwa-splash {
 }
 
 /* ------------------------------------------------------------
-   Aviso de nueva versión disponible
-   Ajustado para verse bien en mobile:
-   - width fluido en vez de max-width solo
-   - flex-wrap por si el texto es largo
-   - respeta el safe-area-inset-bottom (notch / home indicator)
-   - botón con mejor área táctil
+   Aviso de nueva versión disponible (bottom sheet)
+   ------------------------------------------------------------
+   Mobile: overlay oscuro + tarjeta blanca que sube desde abajo,
+   con "grabber" arriba, título + logo, texto y botón grande, más
+   un "Ahora no" para descartar sin forzar la actualización.
+   Desktop/tablet (>=560px): pasa a ser un modal centrado, en vez
+   de quedar pegado abajo (ver media query al final).
    ------------------------------------------------------------ */
 
-/* Mobile-first: barra de ancho completo pegada abajo, respetando el
-   safe-area del home indicator. En pantallas más anchas (tablet/desktop)
-   pasa a ser una card flotante centrada, ver media query al final. */
-
-.pwa-update-toast {
+.pwa-update-overlay {
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     z-index: 99998;
     display: flex;
-    align-items: flex-start;
-    gap: .75rem;
-    padding: 1rem 1.1rem calc(1rem + env(safe-area-inset-bottom, 0px)) 1.1rem;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(11, 12, 16, 0);
+    transition: background .35s ease;
+}
+
+.pwa-update-overlay.pwa-update-overlay-show {
+    background: rgba(11, 12, 16, .55);
+}
+
+.pwa-update-sheet {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
     background: #ffffff;
     color: #0b0c10;
     font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-    border-radius: 20px 20px 0 0;
-    border-top: 1px solid #e2e8f0;
-    box-shadow: 0 -18px 45px rgba(11, 12, 16, .22);
-    transform: translateY(110%);
-    transition: transform .4s cubic-bezier(.16, 1, .3, 1);
+    border-radius: 24px 24px 0 0;
+    padding: .75rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom, 0px)) 1.5rem;
+    box-shadow: 0 -18px 45px rgba(11, 12, 16, .28);
+    transform: translateY(100%);
+    transition: transform .38s cubic-bezier(.16, 1, .3, 1);
 }
 
-.pwa-update-toast.pwa-update-toast-show {
+.pwa-update-overlay-show .pwa-update-sheet {
     transform: translateY(0);
 }
 
-/* Barrita de "grabber" arriba de la card, como un bottom-sheet nativo */
-.pwa-update-toast::before {
-    content: '';
-    position: absolute;
-    top: .5rem;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 34px;
+.pwa-update-sheet__handle {
+    width: 38px;
     height: 4px;
+    margin: 0 auto 1.1rem;
     border-radius: 99px;
     background: #e2e8f0;
 }
 
-.pwa-update-toast__icon {
+.pwa-update-sheet__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 0 0 1.1rem;
+}
+
+.pwa-update-sheet__title {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -.01em;
+    line-height: 1.25;
+    color: #0b0c10;
+}
+
+.pwa-update-sheet__icon {
     position: relative;
     flex-shrink: 0;
-    width: 2.75rem;
-    height: 2.75rem;
+    width: 3rem;
+    height: 3rem;
     border-radius: 14px;
     background: #0b0c10;
     display: flex;
@@ -214,7 +232,7 @@ html.pwa-standalone .pwa-splash {
     overflow: hidden;
 }
 
-.pwa-update-toast__icon-img {
+.pwa-update-sheet__icon-img {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -223,14 +241,13 @@ html.pwa-standalone .pwa-splash {
     display: block;
 }
 
-.pwa-update-toast__icon-fallback {
+.pwa-update-sheet__icon-fallback {
     display: none;
     width: 1.4rem;
     height: 1.4rem;
 }
 
-/* Punto de notificación, como el badge de "actualización pendiente" de Play Store */
-.pwa-update-toast__dot {
+.pwa-update-sheet__icon-dot {
     position: absolute;
     top: -3px;
     right: -3px;
@@ -247,55 +264,90 @@ html.pwa-standalone .pwa-splash {
     50% { transform: scale(1.25); }
 }
 
-.pwa-update-toast__text {
-    flex: 1 1 auto;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: .2rem;
-    padding-top: .1rem;
-}
-
-.pwa-update-toast__title {
-    font-size: .88rem;
-    font-weight: 800;
-    letter-spacing: -.01em;
-    color: #0b0c10;
-    line-height: 1.25;
-}
-
-.pwa-update-toast__desc {
-    font-size: .76rem;
+.pwa-update-sheet__body p {
+    margin: 0 0 1rem;
+    font-size: .89rem;
     font-weight: 500;
     color: #64748b;
-    line-height: 1.35;
+    line-height: 1.55;
 }
 
-.pwa-update-toast__actions {
-    margin-top: .7rem;
+.pwa-update-sheet__body strong {
+    color: #0b0c10;
 }
 
-.pwa-update-toast button {
+.pwa-update-sheet__btn {
     width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
     border: none;
-    border-radius: 10px;
-    padding: .8rem 1rem;
+    border-radius: 16px;
+    padding: 1rem;
     background: #0b0c10;
-    color: #fff;
+    color: #facc15;
     font-weight: 800;
-    font-size: .78rem;
+    font-size: .85rem;
     text-transform: uppercase;
     letter-spacing: .04em;
     cursor: pointer;
-    min-height: 2.6rem;
-    white-space: nowrap;
-    transition: background .15s, color .15s, transform .1s;
+    min-height: 3rem;
+    box-shadow: 0 10px 24px -8px rgba(11, 12, 16, .4);
+    transition: background .15s, color .15s, transform .1s, box-shadow .15s;
 }
 
-.pwa-update-toast button:active {
-    transform: scale(.97);
+.pwa-update-sheet__btn:hover {
     background: #facc15;
     color: #0b0c10;
+    transform: translateY(-1px);
+    box-shadow: 0 14px 26px -8px rgba(250, 204, 21, .5);
+}
+
+.pwa-update-sheet__btn:active {
+    transform: translateY(0);
+}
+
+.pwa-update-sheet__btn:disabled {
+    cursor: default;
+    opacity: .85;
+}
+
+.pwa-update-sheet__spin {
+    width: 15px;
+    height: 15px;
+    border-radius: 99px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    animation: pwaUpdateSpin .7s linear infinite;
+    display: none;
+    flex-shrink: 0;
+}
+
+@keyframes pwaUpdateSpin {
+    to { transform: rotate(360deg); }
+}
+
+@media (min-width: 560px) {
+    .pwa-update-overlay {
+        align-items: center;
+    }
+
+    .pwa-update-sheet {
+        border-radius: 24px;
+        padding: 1.75rem;
+        transform: translateY(16px) scale(.97);
+        transition: transform .3s cubic-bezier(.16, 1, .3, 1);
+        box-shadow: 0 25px 60px -12px rgba(11, 12, 16, .45);
+    }
+
+    .pwa-update-overlay-show .pwa-update-sheet {
+        transform: translateY(0) scale(1);
+    }
+
+    .pwa-update-sheet__handle {
+        display: none;
+    }
 }
 
 /* ------------------------------------------------------------
@@ -392,33 +444,5 @@ html.pwa-standalone .pwa-splash {
     @keyframes pwaModalSlideUp {
         from { opacity: 0; transform: translateY(10px) scale(.98); }
         to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-}
-
-@media (min-width: 560px) {
-    .pwa-update-toast {
-        left: auto;
-        right: 1.25rem;
-        bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
-        width: 360px;
-        max-width: calc(100vw - 2rem);
-        padding: 1rem 1.1rem;
-        border-radius: 16px;
-        border-top: none;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 20px 45px rgba(11, 12, 16, .22);
-        transform: translateY(150%);
-    }
-
-    .pwa-update-toast.pwa-update-toast-show {
-        transform: translateY(0);
-    }
-
-    .pwa-update-toast::before {
-        display: none;
-    }
-
-    .pwa-update-toast__text {
-        padding-top: 0;
     }
 }
