@@ -11,6 +11,12 @@
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
                 .then((reg) => {
+                    // Si ya había una actualización instalada y esperando de una
+                    // sesión anterior (ej. la cerraste con "Ahora no" y volviste a
+                    // entrar sin que el SW nuevo llegara a tomar control), la
+                    // mostramos de nuevo apenas carga la página.
+                    if (reg.waiting) mostrarAvisoActualizacion(reg);
+
                     // Chequeo periódico de actualizaciones (cada 60s) y al volver
                     // a la pestaña, para detectar deploys nuevos en Vercel rápido.
                     setInterval(() => reg.update(), 60 * 1000);
@@ -44,32 +50,39 @@
     }
 
     function mostrarAvisoActualizacion(reg) {
-        if (document.querySelector('.pwa-update-toast')) return;
+        if (!reg.waiting) return;
+        if (document.querySelector('.pwa-update-overlay')) return;
 
-        const toast = document.createElement('div');
-        toast.className = 'pwa-update-toast';
-        toast.innerHTML =
-            '<span class="pwa-update-toast__icon">' +
-                '<img class="pwa-update-toast__icon-img" src="icon-192.png" alt="">' +
-                '<svg class="pwa-update-toast__icon-fallback" viewBox="0 0 24 24" fill="none" stroke="#facc15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-                    '<path d="M21 12a9 9 0 1 1-2.64-6.36"></path><polyline points="21 3 21 9 15 9"></polyline>' +
-                '</svg>' +
-                '<span class="pwa-update-toast__dot"></span>' +
-            '</span>' +
-            '<span class="pwa-update-toast__text">' +
-                '<span class="pwa-update-toast__title">Actualización disponible</span>' +
-                '<span class="pwa-update-toast__desc">Se hicieron cambios en la app. Actualizá para seguir usándola con la última versión.</span>' +
-                '<span class="pwa-update-toast__actions">' +
-                    '<button type="button">Actualizar ahora</button>' +
-                '</span>' +
-            '</span>';
-        document.body.appendChild(toast);
+        const overlay = document.createElement('div');
+        overlay.className = 'pwa-update-overlay';
+        overlay.innerHTML =
+            '<div class="pwa-update-sheet">' +
+                '<div class="pwa-update-sheet__handle"></div>' +
+                '<div class="pwa-update-sheet__header">' +
+                    '<h2 class="pwa-update-sheet__title">Actualización disponible</h2>' +
+                    '<span class="pwa-update-sheet__icon">' +
+                        '<img class="pwa-update-sheet__icon-img" src="icon-192.png" alt="">' +
+                        '<svg class="pwa-update-sheet__icon-fallback" viewBox="0 0 24 24" fill="none" stroke="#facc15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                            '<path d="M21 12a9 9 0 1 1-2.64-6.36"></path><polyline points="21 3 21 9 15 9"></polyline>' +
+                        '</svg>' +
+                        '<span class="pwa-update-sheet__icon-dot"></span>' +
+                    '</span>' +
+                '</div>' +
+                '<div class="pwa-update-sheet__body">' +
+                    '<p>Actualizamos el <strong>Panel de Administración</strong> con mejoras y correcciones para que la app funcione mejor.</p>' +
+                    '<p>Actualizá para seguir usándola con la última versión. Es rápido y no perdés nada de lo que tenías cargado.</p>' +
+                '</div>' +
+                '<button type="button" class="pwa-update-sheet__btn">' +
+                    '<span class="pwa-update-sheet__spin"></span>' +
+                    '<span class="pwa-update-sheet__btn-texto">Actualizar</span>' +
+                '</button>' +
+            '</div>';
+        document.body.appendChild(overlay);
 
-        // Si el icon-192.png no existe (ej. todavía no se subió), mostramos
-        // el ícono de recarga en su lugar en vez de dejar la imagen rota
-        // superpuesta con el SVG de reserva.
-        const iconImg = toast.querySelector('.pwa-update-toast__icon-img');
-        const iconFallback = toast.querySelector('.pwa-update-toast__icon-fallback');
+        // Si icon-192.png no existe todavía, mostramos el ícono de recarga
+        // en su lugar en vez de dejar la imagen rota superpuesta con el SVG.
+        const iconImg = overlay.querySelector('.pwa-update-sheet__icon-img');
+        const iconFallback = overlay.querySelector('.pwa-update-sheet__icon-fallback');
         if (iconImg) {
             iconImg.addEventListener('error', () => {
                 iconImg.remove();
@@ -77,10 +90,18 @@
             }, { once: true });
         }
 
-        requestAnimationFrame(() => toast.classList.add('pwa-update-toast-show'));
+        requestAnimationFrame(() => overlay.classList.add('pwa-update-overlay-show'));
 
-        toast.querySelector('button').addEventListener('click', () => {
-            if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        const worker = reg.waiting;
+        const btnActualizar = overlay.querySelector('.pwa-update-sheet__btn');
+
+        btnActualizar.addEventListener('click', () => {
+            btnActualizar.disabled = true;
+            overlay.querySelector('.pwa-update-sheet__spin').style.display = 'inline-block';
+            overlay.querySelector('.pwa-update-sheet__btn-texto').textContent = 'Actualizando...';
+            worker.postMessage({ type: 'SKIP_WAITING' });
+            // No cerramos el sheet acá: el "controllerchange" en el registro
+            // de arriba recarga la página solo apenas el SW nuevo toma control.
         });
     }
 
