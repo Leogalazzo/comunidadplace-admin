@@ -220,6 +220,10 @@
                         </p>
                         <p id="contador-emprendedores" class="text-slate-400 text-xs font-bold uppercase tracking-wider mt-3"></p>
                     </div>
+                    <button data-btn-modo-seleccion onclick="toggleModoSeleccionAviso()"
+                        class="btn-modo-seleccion-aviso h-11 sm:h-12 px-4 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors shrink-0 self-start sm:self-auto">
+                        📣 <span>Enviar aviso a varios</span>
+                    </button>
                 </header>
 
                 <!-- BUSCADOR Y FILTRO -->
@@ -266,6 +270,10 @@
                         </p>
                         <p id="contador-beneficios" class="text-slate-400 text-xs font-bold uppercase tracking-wider mt-3"></p>
                     </div>
+                    <button data-btn-modo-seleccion onclick="toggleModoSeleccionAviso()"
+                        class="btn-modo-seleccion-aviso h-11 sm:h-12 px-4 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors shrink-0 self-start sm:self-auto">
+                        📣 <span>Enviar aviso a varios</span>
+                    </button>
                 </header>
 
                 <!-- GRID DE COMERCIOS "SOLO BENEFICIOS" -->
@@ -378,6 +386,23 @@
             </section>
 
         </main>
+
+        <!-- BARRA FLOTANTE: modo selección múltiple para avisos masivos -->
+        <div id="barra-seleccion-aviso" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-md bg-slate-900 text-white rounded-2xl shadow-2xl shadow-slate-900/30 px-4 py-3 sm:px-5 flex items-center gap-2 sm:gap-3">
+            <span id="contador-seleccion-aviso" class="text-xs sm:text-sm font-bold flex-1">0 seleccionados</span>
+            <button onclick="seleccionarTodosVisiblesAviso()"
+                class="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-colors whitespace-nowrap">
+                Todos
+            </button>
+            <button onclick="enviarAvisoMasivo()"
+                class="px-3 py-2 rounded-xl bg-yellow-400 text-black hover:bg-yellow-300 text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-colors whitespace-nowrap">
+                Enviar aviso
+            </button>
+            <button onclick="salirModoSeleccionAviso()" title="Cancelar"
+                class="w-8 h-8 shrink-0 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
     </div>
 
     <!-- MODAL CATEGORIA -->
