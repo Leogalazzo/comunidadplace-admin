@@ -170,6 +170,15 @@ html.pwa-standalone .pwa-splash {
     justify-content: center;
     background: rgba(11, 12, 16, 0);
     transition: background .35s ease;
+    /* El scroll no se "encadena" al fondo de la página */
+    overscroll-behavior: contain;
+}
+
+/* Mientras el aviso de actualización está abierto, el fondo no se puede scrollear
+   (la clase la pone bloquearScrollFondo en pwa.js). */
+html.pwa-scroll-lock,
+body.pwa-scroll-lock {
+    overflow: hidden;
 }
 
 .pwa-update-overlay.pwa-update-overlay-show {
@@ -180,6 +189,11 @@ html.pwa-standalone .pwa-splash {
     position: relative;
     width: 100%;
     max-width: 480px;
+    /* Si la pantalla es muy baja (celular horizontal / letra grande) la tarjeta scrollea por dentro, no la página */
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     background: #ffffff;
     color: #0b0c10;
     font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
