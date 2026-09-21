@@ -78,6 +78,7 @@
                 '</button>' +
             '</div>';
         document.body.appendChild(overlay);
+        bloquearScrollFondo(overlay);
 
         // Si icon-192.png no existe todavía, mostramos el ícono de recarga
         // en su lugar en vez de dejar la imagen rota superpuesta con el SVG.
@@ -103,6 +104,23 @@
             // No cerramos el sheet acá: el "controllerchange" en el registro
             // de arriba recarga la página solo apenas el SW nuevo toma control.
         });
+    }
+
+    // Mientras el aviso está abierto, el fondo no debe poder scrollearse.
+    // - Desktop / Android: la clase pwa-scroll-lock pone overflow:hidden en html y body (ver pwa.css).
+    // - iOS / iPadOS: overflow:hidden no siempre frena el scroll con el dedo, así que además se
+    //   cancelan los touchmove que arrancan fuera de la tarjeta (o dentro, si la tarjeta no scrollea).
+    // No hace falta desbloquear: el aviso solo se cierra recargando la página (controllerchange).
+    function bloquearScrollFondo(overlay) {
+        document.documentElement.classList.add('pwa-scroll-lock');
+        document.body.classList.add('pwa-scroll-lock');
+
+        const sheet = overlay.querySelector('.pwa-update-sheet');
+        overlay.addEventListener('touchmove', (ev) => {
+            const dentro = sheet && sheet.contains(ev.target);
+            const scrollea = sheet && sheet.scrollHeight > sheet.clientHeight;
+            if (!dentro || !scrollea) ev.preventDefault();
+        }, { passive: false });
     }
 
     // --------------------------------------------------------
