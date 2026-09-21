@@ -275,6 +275,10 @@
         #modal-form .form-grid-2 { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
         #modal-form .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
         #modal-form .form-group.span-2 { grid-column: 1 / -1; }
+        /* Par de campos lado a lado (ej. Precio + Precio anterior): siempre 2 columnas parejas que ocupan
+           todo el ancho, y la ayuda va debajo abarcando ambas para que el texto no se parta en varias líneas. */
+        #modal-form .form-subgrid { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 0.85rem; row-gap: 0; }
+        #modal-form .form-subgrid .field-hint { grid-column: 1 / -1; margin: 0.4rem 0 0; }
         #modal-form label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mp-text-mid); }
         #modal-form .required { color: var(--mp-accent-ink); margin-left: 2px; }
         #modal-form .field-hint { font-size: 0.71rem; color: var(--mp-text-muted); margin: 0.15rem 0 0; }
@@ -701,6 +705,8 @@
             #modal-form .form-grid { gap: 0.3rem; }
             #modal-form .form-grid-2 { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
             #modal-form .form-group { gap: 0.18rem; }
+            #modal-form .form-subgrid { column-gap: 0.3rem; }
+            #modal-form .form-subgrid .field-hint { margin-top: 0.2rem; }
             #modal-form label { font-size: 0.6rem; }
             #modal-form .field-hint { font-size: 0.6rem; margin-top: 0.08rem; }
             #modal-form input[type="text"],
@@ -1042,7 +1048,12 @@
                         <p class="px-4 mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Comunidad</p>
                         <button id="nav-soporte" onclick="mostrarSeccion('soporte'); cerrarSidebarMobile()" class="w-full text-left text-slate-400 hover:text-white hover:bg-white/5 px-4 py-3 rounded-xl transition-all flex items-center gap-3 group">
                             <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v6m0-6a3 3 0 100 6 3 3 0 000-6zm0-6a9 9 0 100 18 9 9 0 000-18zm6.364 2.636l-2.121 2.121M7.757 16.243l-2.121 2.121m0-12.728l2.121 2.121M16.243 16.243l2.121 2.121"/></svg>
-                            <span class="flex-1">Ayuda y pagos</span>
+                            <span class="flex-1">Ayuda</span>
+                            <svg class="w-4 h-4 opacity-0 group-hover:opacity-60 group-hover:translate-x-0.5 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                        <button id="nav-pagos" onclick="mostrarSeccion('pagos'); cerrarSidebarMobile()" class="w-full text-left text-slate-400 hover:text-white hover:bg-white/5 px-4 py-3 rounded-xl transition-all flex items-center gap-3 group">
+                            <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            <span class="flex-1">Pagos</span>
                             <svg class="w-4 h-4 opacity-0 group-hover:opacity-60 group-hover:translate-x-0.5 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
                         </button>
                         <div>
@@ -1076,7 +1087,7 @@
         </aside>
 
         <!-- CONTENEDOR PRINCIPAL -->
-        <main class="flex-1 p-4 sm:p-6 md:p-12 lg:p-14 max-w-7xl mx-auto w-full min-w-0">
+        <main class="flex-1 p-4 sm:p-6 md:p-8 lg:p-12 xl:p-14 max-w-7xl mx-auto w-full min-w-0">
 
             <!-- BANNER: TIENDA BLOQUEADA -->
             <div id="banner-tienda-bloqueada" class="hidden mb-6 md:mb-8 bg-red-50 border border-red-200 rounded-2xl p-4 sm:p-5 flex items-start gap-3 sm:gap-4">
@@ -1092,7 +1103,7 @@
 
             <!-- SECCIÓN: MIS PRODUCTOS -->
             <section id="section-productos" class="animate-fade-in">
-                <header class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6 mb-6 md:mb-10 pb-6 border-b border-slate-200/80">
+                <header class="flex flex-col xl:flex-row xl:items-end justify-between gap-4 xl:gap-6 mb-6 md:mb-10 pb-6 border-b border-slate-200/80">
                     <div>
                         <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight text-slate-900">
                             Productos cargados
@@ -1102,7 +1113,7 @@
                         </p>
                         <p id="contador-productos" class="text-slate-400 text-xs font-bold uppercase tracking-wider mt-3"></p>
                     </div>
-                    <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
                         <button type="button" onclick="abrirInstructivo()"
                             class="inline-flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-600 px-3.5 sm:px-5 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm hover:border-obsidian hover:text-obsidian transition-all duration-200 active:scale-95">
                             <span>Instructivo</span>
@@ -1115,8 +1126,8 @@
                 </header>
 
                 <!-- BUSCADOR + FILTROS -->
-                <div class="flex flex-col sm:flex-row gap-2.5 sm:gap-3 mb-5 sm:mb-6">
-                    <div class="relative flex-1">
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_auto_auto] gap-2.5 sm:gap-3 mb-5 sm:mb-6">
+                    <div class="relative sm:col-span-2 xl:col-span-1 min-w-0">
                         <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"/>
                         </svg>
@@ -1124,19 +1135,19 @@
                             class="w-full bg-white border border-slate-200 rounded-xl sm:rounded-2xl pl-10 pr-4 py-2.5 sm:py-3 text-sm font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-medium focus:bg-white focus:border-obsidian focus:ring-4 focus:ring-yellow-400/20 outline-none transition-all">
                     </div>
                     <select id="filtro-estado-productos" onchange="onFiltroCambiado()"
-                        class="bg-white border border-slate-200 rounded-xl sm:rounded-2xl px-3.5 py-2.5 sm:py-3 text-sm font-bold text-slate-700 focus:border-obsidian focus:ring-4 focus:ring-yellow-400/20 outline-none transition-all cursor-pointer">
+                        class="w-full min-w-0 xl:w-auto bg-white border border-slate-200 rounded-xl sm:rounded-2xl px-3.5 py-2.5 sm:py-3 text-sm font-bold text-slate-700 focus:border-obsidian focus:ring-4 focus:ring-yellow-400/20 outline-none transition-all cursor-pointer">
                         <option value="todos">Todos los estados</option>
                         <option value="visibles">Visibles</option>
                         <option value="ocultos">Ocultos</option>
                     </select>
                     <select id="filtro-categoria-productos" onchange="onFiltroCambiado()"
-                        class="bg-white border border-slate-200 rounded-xl sm:rounded-2xl px-3.5 py-2.5 sm:py-3 text-sm font-bold text-slate-700 focus:border-obsidian focus:ring-4 focus:ring-yellow-400/20 outline-none transition-all cursor-pointer">
+                        class="w-full min-w-0 xl:w-auto bg-white border border-slate-200 rounded-xl sm:rounded-2xl px-3.5 py-2.5 sm:py-3 text-sm font-bold text-slate-700 focus:border-obsidian focus:ring-4 focus:ring-yellow-400/20 outline-none transition-all cursor-pointer">
                         <option value="">Todas las categorías</option>
                     </select>
                 </div>
 
                 <!-- GRID DE PRODUCTOS -->
-                <div id="grid-productos" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-5">
+                <div id="grid-productos" class="grid grid-cols-2 md:grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-2.5 sm:gap-5">
                     <div class="col-span-full flex flex-col items-center justify-center gap-3 py-24 text-slate-400 font-semibold">
                         <svg class="w-6 h-6 animate-spin text-slate-300" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                         <span>Cargando productos...</span>
@@ -1385,15 +1396,145 @@
                 </div>
             </section>
 
-            <!-- SECCIÓN: SOPORTE Y PAGOS -->
+            <!-- SECCIÓN: AYUDA -->
             <section id="section-soporte" class="hidden animate-fade-in">
                 <header class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6 mb-6 md:mb-10 pb-6 border-b border-slate-200/80">
                     <div>
                         <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight text-slate-900">
-                            Ayuda y pagos
+                            Ayuda
                         </h1>
                         <p class="text-slate-500 text-sm md:text-base mt-2">
-                            Gestioná tu suscripción y comunicate con nosotros ante cualquier duda o problema.
+                            Comunicate con nosotros ante cualquier duda o problema.
+                        </p>
+                    </div>
+                </header>
+
+                <div class="max-w-3xl space-y-4 sm:space-y-6">
+
+                    <!-- REPORTAR UN PROBLEMA -->
+                    <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-slate-200/80 shadow-sm">
+                        <div class="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-6">
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-red-400/15 text-red-600 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h2 class="font-extrabold text-slate-900 text-sm sm:text-base">Reportar un problema</h2>
+                                <p class="text-xs text-slate-400">Contanos qué error o inconveniente encontraste en la plataforma</p>
+                            </div>
+                        </div>
+
+                        <form id="form-reportar-problema" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5" id="reporte-tipo-label">Tipo de problema</label>
+                                <!-- Select personalizado: el <select> nativo se ve muy distinto (y feo)
+                                     entre navegador/SO, sobre todo en mobile. Este botón + lista
+                                     replica el mismo look que el resto del formulario en todos lados.
+                                     El input oculto sigue siendo el valor real que lee dashboard.js. -->
+                                <div class="relative">
+                                    <input type="hidden" id="reporte-tipo" value="">
+                                    <button
+                                        type="button"
+                                        id="reporte-tipo-trigger"
+                                        onclick="toggleReporteTipoDropdown()"
+                                        aria-haspopup="listbox"
+                                        aria-expanded="false"
+                                        aria-labelledby="reporte-tipo-label reporte-tipo-texto"
+                                        class="w-full flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-sm text-left text-slate-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
+                                    >
+                                        <span id="reporte-tipo-texto">Seleccioná una opción</span>
+                                        <svg id="reporte-tipo-flecha" class="w-4 h-4 flex-shrink-0 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
+                                    </button>
+                                    <ul
+                                        id="reporte-tipo-lista"
+                                        role="listbox"
+                                        tabindex="-1"
+                                        class="hidden absolute z-20 left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg shadow-slate-900/10 overflow-hidden py-1"
+                                    >
+                                        <li role="option" aria-selected="false" data-valor="Error tecnico" onclick="seleccionarReporteTipo('Error tecnico', 'Error técnico (algo no funciona)')" class="px-3.5 py-2.5 text-sm text-slate-700 hover:bg-yellow-50 active:bg-yellow-100 cursor-pointer transition-colors">Error técnico (algo no funciona)</li>
+                                        <li role="option" aria-selected="false" data-valor="Problema de pago" onclick="seleccionarReporteTipo('Problema de pago', 'Problema con un pago o la suscripción')" class="px-3.5 py-2.5 text-sm text-slate-700 hover:bg-yellow-50 active:bg-yellow-100 cursor-pointer transition-colors">Problema con un pago o la suscripción</li>
+                                        <li role="option" aria-selected="false" data-valor="Problema con producto" onclick="seleccionarReporteTipo('Problema con producto', 'Problema con un producto o mi perfil público')" class="px-3.5 py-2.5 text-sm text-slate-700 hover:bg-yellow-50 active:bg-yellow-100 cursor-pointer transition-colors">Problema con un producto o mi perfil público</li>
+                                        <li role="option" aria-selected="false" data-valor="Sugerencia" onclick="seleccionarReporteTipo('Sugerencia', 'Sugerencia o idea')" class="px-3.5 py-2.5 text-sm text-slate-700 hover:bg-yellow-50 active:bg-yellow-100 cursor-pointer transition-colors">Sugerencia o idea</li>
+                                        <li role="option" aria-selected="false" data-valor="Otro" onclick="seleccionarReporteTipo('Otro', 'Otro')" class="px-3.5 py-2.5 text-sm text-slate-700 hover:bg-yellow-50 active:bg-yellow-100 cursor-pointer transition-colors">Otro</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5" for="reporte-descripcion">Contanos qué pasó</label>
+                                <textarea id="reporte-descripcion" required rows="4" maxlength="1000" placeholder="Describí el problema con el mayor detalle posible: qué estabas haciendo, qué esperabas que pasara y qué pasó en realidad." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent resize-none"></textarea>
+                            </div>
+
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1.5" for="reporte-contacto">Contacto</label>
+                                <input type="text" id="reporte-contacto" placeholder="Tú número" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent">
+                                <p class="text-[11px] text-slate-400 mt-1.5">Dejanos tu contacto para informarte de la corrección o para preguntarte mas detalles del error.</p>
+                            </div>
+
+                            <button
+                                type="submit"
+                                id="reporte-btn-enviar"
+                                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-obsidian text-white px-6 py-3 rounded-xl font-bold text-sm uppercase tracking-wide hover:bg-yellow-400 hover:text-black transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                            >
+                                Enviar reporte
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- CANALES DE CONTACTO -->
+                    <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-slate-200/80 shadow-sm">
+                        <div class="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-6">
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-400/15 text-emerald-700 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0zM7 20l-2.5 1.5.7-2.8"/></svg>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h2 class="font-extrabold text-slate-900 text-sm sm:text-base">Canales de contacto</h2>
+                                <p class="text-xs text-slate-400">¿Tenés un problema o una duda? Escribinos</p>
+                            </div>
+                        </div>
+
+                        <!-- Botones grandes, apilados en mobile y en fila en desktop.
+                             Números de WhatsApp reales (formato wa.me: 549 + característica
+                             + número, sin "+" ni espacios): soporte 5493644539325,
+                             Comunidad Emprendedora 5493735533008. -->
+                        <div class="grid grid-cols-1 md:grid-cols-[repeat(auto-fit,minmax(min(100%,19rem),1fr))] gap-3 sm:gap-4">
+                            <a href="https://wa.me/5493644539325" target="_blank" rel="noopener"
+                                class="flex items-center gap-3 sm:gap-4 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-2xl p-4 sm:p-5 transition-all active:scale-[0.97] group">
+                                <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-emerald-500/20">
+                                    <svg class="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.29.173-1.414-.074-.124-.272-.198-.57-.347z"/><path d="M12.001 2C6.478 2 2 6.478 2 12c0 1.876.52 3.63 1.42 5.13L2 22l4.994-1.396A9.947 9.947 0 0012 22c5.523 0 10-4.478 10-10S17.523 2 12 2zm0 18.13a8.1 8.1 0 01-4.135-1.13l-.297-.176-3.06.856.822-2.997-.194-.31A8.113 8.113 0 013.87 12c0-4.487 3.643-8.13 8.13-8.13 4.487 0 8.13 3.643 8.13 8.13 0 4.487-3.643 8.13-8.13 8.13z"/></svg>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="font-extrabold text-slate-900 text-sm break-words">Contacto soporte</p>
+                                    <p class="text-xs text-slate-500 mt-0.5 break-words">Consultas generales o problemas técnicos</p>
+                                </div>
+                                <svg class="w-4 h-4 text-emerald-600 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                            </a>
+
+                            <a href="https://wa.me/5493735533008" target="_blank" rel="noopener"
+                                class="flex items-center gap-3 sm:gap-4 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-2xl p-4 sm:p-5 transition-all active:scale-[0.97] group">
+                                <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-emerald-500/20">
+                                    <svg class="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.29.173-1.414-.074-.124-.272-.198-.57-.347z"/><path d="M12.001 2C6.478 2 2 6.478 2 12c0 1.876.52 3.63 1.42 5.13L2 22l4.994-1.396A9.947 9.947 0 0012 22c5.523 0 10-4.478 10-10S17.523 2 12 2zm0 18.13a8.1 8.1 0 01-4.135-1.13l-.297-.176-3.06.856.822-2.997-.194-.31A8.113 8.113 0 013.87 12c0-4.487 3.643-8.13 8.13-8.13 4.487 0 8.13 3.643 8.13 8.13 0 4.487-3.643 8.13-8.13 8.13z"/></svg>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p class="font-extrabold text-slate-900 text-sm break-words">Comunidad Emprendedora</p>
+                                    <p class="text-xs text-slate-500 mt-0.5 break-words">Sugerencias, ideas o contacto con la comunidad</p>
+                                </div>
+                                <svg class="w-4 h-4 text-emerald-600 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECCIÓN: PAGOS -->
+            <section id="section-pagos" class="hidden animate-fade-in">
+                <header class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6 mb-6 md:mb-10 pb-6 border-b border-slate-200/80">
+                    <div>
+                        <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight text-slate-900">
+                            Pagos
+                        </h1>
+                        <p class="text-slate-500 text-sm md:text-base mt-2">
+                            Gestioná tu suscripción mensual en Comunidad Emprendedora.
                         </p>
                     </div>
                 </header>
@@ -1474,56 +1615,14 @@
                             </div>
 
                             <p class="text-xs text-slate-400 mt-3 leading-relaxed">
-                                Una vez que transferís, tocá <strong class="text-slate-600">"Informar pago"</strong> más abajo y mandanos el comprobante para activar tu cuenta.
+                                Una vez que transferís, tocá <strong class="text-slate-600">"Informar pago"</strong> y mandanos el comprobante para activar tu cuenta.
                             </p>
-                        </div>
-                    </div>
 
-                    <!-- CANALES DE CONTACTO -->
-                    <div class="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-slate-200/80 shadow-sm">
-                        <div class="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-6">
-                            <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-400/15 text-emerald-700 flex items-center justify-center flex-shrink-0">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0zM7 20l-2.5 1.5.7-2.8"/></svg>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <h2 class="font-extrabold text-slate-900 text-sm sm:text-base">Canales de contacto</h2>
-                                <p class="text-xs text-slate-400">¿Tenés un problema o una duda? Escribinos</p>
-                            </div>
-                        </div>
-
-                        <!-- Botones grandes, apilados en mobile y en fila en desktop.
-                             Números de WhatsApp reales (formato wa.me: 549 + característica
-                             + número, sin "+" ni espacios): soporte 5493644539325,
-                             Comunidad Emprendedora 5493735533008. El botón "Informar pago"
-                             usa el número de Comunidad Emprendedora (ver informarPagoWhatsapp
-                             en dashboard.js). -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                            <a href="https://wa.me/5493644539325" target="_blank" rel="noopener"
-                                class="flex items-center gap-3 sm:gap-4 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-2xl p-4 sm:p-5 transition-all active:scale-[0.97] group">
-                                <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-emerald-500/20">
-                                    <svg class="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.29.173-1.414-.074-.124-.272-.198-.57-.347z"/><path d="M12.001 2C6.478 2 2 6.478 2 12c0 1.876.52 3.63 1.42 5.13L2 22l4.994-1.396A9.947 9.947 0 0012 22c5.523 0 10-4.478 10-10S17.523 2 12 2zm0 18.13a8.1 8.1 0 01-4.135-1.13l-.297-.176-3.06.856.822-2.997-.194-.31A8.113 8.113 0 013.87 12c0-4.487 3.643-8.13 8.13-8.13 4.487 0 8.13 3.643 8.13 8.13 0 4.487-3.643 8.13-8.13 8.13z"/></svg>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="font-extrabold text-slate-900 text-sm">Contacto soporte</p>
-                                    <p class="text-xs text-slate-500 mt-0.5">Consultas generales o problemas técnicos</p>
-                                </div>
-                                <svg class="w-4 h-4 text-emerald-600 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
-                            </a>
-
-                            <a href="https://wa.me/5493735533008" target="_blank" rel="noopener"
-                                class="flex items-center gap-3 sm:gap-4 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-2xl p-4 sm:p-5 transition-all active:scale-[0.97] group">
-                                <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-emerald-500/20">
-                                    <svg class="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.29.173-1.414-.074-.124-.272-.198-.57-.347z"/><path d="M12.001 2C6.478 2 2 6.478 2 12c0 1.876.52 3.63 1.42 5.13L2 22l4.994-1.396A9.947 9.947 0 0012 22c5.523 0 10-4.478 10-10S17.523 2 12 2zm0 18.13a8.1 8.1 0 01-4.135-1.13l-.297-.176-3.06.856.822-2.997-.194-.31A8.113 8.113 0 013.87 12c0-4.487 3.643-8.13 8.13-8.13 4.487 0 8.13 3.643 8.13 8.13 0 4.487-3.643 8.13-8.13 8.13z"/></svg>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <p class="font-extrabold text-slate-900 text-sm">Comunidad Emprendedora</p>
-                                    <p class="text-xs text-slate-500 mt-0.5">Sugerencias, ideas o contacto con la comunidad</p>
-                                </div>
-                                <svg class="w-4 h-4 text-emerald-600 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
-                            </a>
-
+                            <!-- Usa el número de WhatsApp de Comunidad Emprendedora (549 +
+                                 característica + número, sin "+" ni espacios): 5493735533008
+                                 (ver informarPagoWhatsapp en dashboard.js). -->
                             <button type="button" onclick="informarPagoWhatsapp()"
-                                class="sm:col-span-2 flex items-center gap-3 sm:gap-4 bg-obsidian hover:bg-slate-800 rounded-2xl p-4 sm:p-5 transition-all active:scale-[0.97] group text-left">
+                                class="w-full mt-3 flex items-center gap-3 sm:gap-4 bg-obsidian hover:bg-slate-800 rounded-2xl p-4 sm:p-5 transition-all active:scale-[0.97] group text-left">
                                 <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-yellow-400 text-black flex items-center justify-center flex-shrink-0 shadow-md shadow-yellow-400/20">
                                     <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                 </div>
@@ -1801,16 +1900,18 @@
                             <label>Nombre del producto <span class="required">*</span></label>
                             <input type="text" id="nombre" required placeholder="Nombre, marca, tamaño">
                         </div>
-                        <div class="form-group">
-                            <label>Precio ($) <span class="required">*</span></label>
-                            <input type="text" inputmode="decimal" id="precio" required placeholder="0"
-                                oninput="sanitizarInputPrecio(this); actualizarTodosLosTotalesVariantes()" onblur="formatearInputPrecio(this)">
-                        </div>
-                        <div class="form-group">
-                            <label>Precio anterior ($)</label>
-                            <input type="text" inputmode="decimal" id="precio_anterior" placeholder="Opcional"
-                                oninput="sanitizarInputPrecio(this)" onblur="formatearInputPrecio(this)">
-                            <p class="field-hint">Opcional. Si lo completás (y es mayor al precio actual), en la tienda aparece tachado con un cartel de % OFF.</p>
+                        <div class="form-subgrid span-2">
+                            <div class="form-group">
+                                <label>Precio ($) <span class="required">*</span></label>
+                                <input type="text" inputmode="decimal" id="precio" required placeholder="0"
+                                    oninput="sanitizarInputPrecio(this); actualizarTodosLosTotalesVariantes()" onblur="formatearInputPrecio(this)">
+                            </div>
+                            <div class="form-group">
+                                <label>Precio anterior ($)</label>
+                                <input type="text" inputmode="decimal" id="precio_anterior" placeholder="Opcional"
+                                    oninput="sanitizarInputPrecio(this)" onblur="formatearInputPrecio(this)">
+                            </div>
+                            <p class="field-hint">Precio anterior es opcional. Si lo completás (y es mayor al precio actual), en la tienda aparece tachado con un cartel de % OFF.</p>
                         </div>
                         <div class="form-group span-2 cat-group">
                             <label>Categoría <span class="required">*</span></label>
