@@ -19,6 +19,12 @@ let productosCache = [];      // último listado de productos traído de Supabas
 // Reemplazar por la URL real una vez hecho el "wrangler deploy".
 const WORKER_SUSCRIPCIONES_URL = 'https://comunidad-emprendedora-api.kentuckyr2.workers.dev';
 
+// URL del Web App de Google Apps Script que recibe los reportes de
+// "Reportar un problema" (sección Ayuda) y los guarda en un Google
+// Sheet. Se obtiene al hacer "Implementar > Nueva implementación > Aplicación
+// web" en el editor de Apps Script (ver instructivo aparte). Termina en /exec.
+const APPS_SCRIPT_REPORTES_URL = 'https://script.google.com/macros/s/AKfycbxWjomMnVyMglBiLzxBRHwhu-q-KfGeBAzOgBHLzdAmPBydpummLjO6MNmknAY51HyW/exec';
+
 // Filtros activos del buscador de "Mis productos"
 let filtroBusquedaProductos = '';
 let filtroEstadoProductos = 'todos';     // 'todos' | 'visibles' | 'ocultos'
@@ -26,6 +32,8 @@ let filtroCategoriaProductos = '';       // '' = todas
 
 const grid = document.getElementById('grid-productos');
 const contadorProductos = document.getElementById('contador-productos');
+const formReportarProblema = document.getElementById('form-reportar-problema');
+formReportarProblema?.addEventListener('submit', enviarReporteProblema);
 const modal = document.getElementById('modal-form');
 const form = document.getElementById('form-producto');
 const selectCategoria = document.getElementById('categoria');
@@ -554,6 +562,129 @@ async function copiarTexto(texto, boton) {
     }
 }
 
+// Select personalizado de "Tipo de problema" (ver form-reportar-problema).
+// Reemplaza al <select> nativo, que en varios navegadores mobile se ve con
+// la tipografía y el estilo por defecto del sistema operativo, sin tomar
+// nada del diseño de la página. El <input type="hidden" id="reporte-tipo">
+// sigue siendo el valor real que lee enviarReporteProblema().
+function toggleReporteTipoDropdown(forzarAbierto) {
+    const lista = document.getElementById('reporte-tipo-lista');
+    const trigger = document.getElementById('reporte-tipo-trigger');
+    const flecha = document.getElementById('reporte-tipo-flecha');
+    if (!lista || !trigger) return;
+
+    const abrir = typeof forzarAbierto === 'boolean' ? forzarAbierto : lista.classList.contains('hidden');
+    lista.classList.toggle('hidden', !abrir);
+    trigger.setAttribute('aria-expanded', String(abrir));
+    flecha?.classList.toggle('rotate-180', abrir);
+}
+
+function seleccionarReporteTipo(valor, textoVisible) {
+    const inputOculto = document.getElementById('reporte-tipo');
+    const textoEl = document.getElementById('reporte-tipo-texto');
+    if (!inputOculto || !textoEl) return;
+
+    inputOculto.value = valor;
+    textoEl.textContent = textoVisible;
+    textoEl.classList.remove('text-slate-400');
+    textoEl.classList.add('text-slate-900');
+
+    document.querySelectorAll('#reporte-tipo-lista li').forEach((li) => {
+        const activo = li.dataset.valor === valor;
+        li.classList.toggle('bg-yellow-50', activo);
+        li.classList.toggle('font-bold', activo);
+        li.classList.toggle('text-slate-900', activo);
+        li.setAttribute('aria-selected', String(activo));
+    });
+
+    toggleReporteTipoDropdown(false);
+}
+
+// Cierra el dropdown de "Tipo de problema" si se toca fuera de él (botón o lista).
+document.addEventListener('click', (event) => {
+    const trigger = document.getElementById('reporte-tipo-trigger');
+    const lista = document.getElementById('reporte-tipo-lista');
+    if (!trigger || !lista || lista.classList.contains('hidden')) return;
+    if (!trigger.contains(event.target) && !lista.contains(event.target)) {
+        toggleReporteTipoDropdown(false);
+    }
+});
+
+// Vuelve el select personalizado de "Tipo de problema" a su estado inicial
+// (se usa después de un envío exitoso, junto con form.reset()).
+function resetearReporteTipoDropdown() {
+    document.getElementById('reporte-tipo').value = '';
+    const textoEl = document.getElementById('reporte-tipo-texto');
+    if (textoEl) {
+        textoEl.textContent = 'Seleccioná una opción';
+        textoEl.classList.add('text-slate-400');
+        textoEl.classList.remove('text-slate-900');
+    }
+    document.querySelectorAll('#reporte-tipo-lista li').forEach((li) => {
+        li.classList.remove('bg-yellow-50', 'font-bold', 'text-slate-900');
+        li.setAttribute('aria-selected', 'false');
+    });
+    toggleReporteTipoDropdown(false);
+}
+
+// Envía el formulario "Reportar un problema" (sección Ayuda) al
+// Google Sheet a través del Web App de Apps Script. Se manda con
+// mode: 'no-cors' porque Apps Script no agrega los headers de CORS que
+// necesitaría el navegador para leer la respuesta; igual la fila se guarda
+// en el Sheet del lado del servidor, simplemente no podemos leer si salió
+// bien o mal desde acá, por eso mostramos éxito apenas el fetch no explota
+// (fetch con no-cors no tira error salvo problema de red real).
+async function enviarReporteProblema(event) {
+    event.preventDefault();
+
+    if (APPS_SCRIPT_REPORTES_URL.includes('PEGAR_ACA_LA_URL_DEL_WEB_APP')) {
+        mostrarToast('Falta configurar la URL de Google Apps Script en dashboard.js.', 'error');
+        return;
+    }
+
+    const tipo = document.getElementById('reporte-tipo').value;
+    const descripcion = document.getElementById('reporte-descripcion').value.trim();
+    const contacto = document.getElementById('reporte-contacto').value.trim();
+
+    if (!tipo || !descripcion) {
+        mostrarToast('Completá el tipo de problema y la descripción.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('reporte-btn-enviar');
+    const textoOriginal = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+
+    try {
+        await fetch(APPS_SCRIPT_REPORTES_URL, {
+            method: 'POST',
+            // text/plain evita el preflight de CORS (que Apps Script no
+            // responde bien), así el POST llega directo como "simple request".
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            mode: 'no-cors',
+            body: JSON.stringify({
+                tipo,
+                descripcion,
+                contacto,
+                usuario: perfilActual ? perfilActual.usuario : '',
+                emprendedor_id: perfilActual ? perfilActual.id : '',
+                fecha: new Date().toISOString(),
+            }),
+        });
+
+        mostrarToast('¡Reporte enviado! Gracias por avisarnos.', 'success');
+        document.getElementById('form-reportar-problema').reset();
+        resetearReporteTipoDropdown();
+    } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudo enviar el reporte. Probá de nuevo.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = textoOriginal;
+    }
+}
+
 // Abre WhatsApp con un mensaje pre-armado para informar el pago por
 // transferencia. Incluye el usuario del emprendedor para identificar
 // rápido qué cuenta hay que activar desde el admin al recibir el
@@ -597,7 +728,7 @@ function aplicarModoCuenta(emprendedor) {
         document.getElementById(id)?.classList.toggle('hidden', esSoloBeneficios);
     });
 
-    // "Ayuda y pagos" -> transferencia bancaria: el monto a transferir es
+    // "Pagos" -> transferencia bancaria: el monto a transferir es
     // distinto para cuentas solo beneficios. Igual que el precio de la
     // tarjeta (config-pago), hay que mantenerlo sincronizado a mano con la
     // variable PRECIO_SUSCRIPCION_BENEFICIOS del Worker si cambia.
@@ -617,6 +748,7 @@ function mostrarSeccion(seccionId) {
         productos: document.getElementById('section-productos'),
         perfil: document.getElementById('section-perfil'),
         soporte: document.getElementById('section-soporte'),
+        pagos: document.getElementById('section-pagos'),
         anuncios: document.getElementById('section-anuncios'),
         qr: document.getElementById('section-qr'),
         credencial: document.getElementById('section-credencial'),
@@ -625,6 +757,7 @@ function mostrarSeccion(seccionId) {
         productos: document.getElementById('nav-productos'),
         perfil: document.getElementById('nav-perfil'),
         soporte: document.getElementById('nav-soporte'),
+        pagos: document.getElementById('nav-pagos'),
         anuncios: document.getElementById('nav-anuncios'),
         qr: document.getElementById('nav-qr'),
         credencial: document.getElementById('nav-credencial'),
