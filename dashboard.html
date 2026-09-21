@@ -16,7 +16,7 @@
     <meta name="apple-mobile-web-app-title" content="Comunidad Online">
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="stylesheet" href="pwa.css">
-    <title>Panel Emprendedor | Comunidad Online</title>
+    <title>Panel Emprendedor | Comunidad Emprendedora</title>
     <link rel="shortcut icon" href="https://res.cloudinary.com/dloroyhev/image/upload/v1786766537/jbsomfdmmovs2soin72l.webp">
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -278,6 +278,206 @@
         #modal-form label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mp-text-mid); }
         #modal-form .required { color: var(--mp-accent-ink); margin-left: 2px; }
         #modal-form .field-hint { font-size: 0.71rem; color: var(--mp-text-muted); margin: 0.15rem 0 0; }
+
+        /* Textareas grandes con alto auto-ajustable (bio, anuncio y descripción de producto).
+           El alto lo maneja autoajustarTextarea() en dashboard.js: crece al escribir hasta un
+           máximo y a partir de ahí scrollea por dentro. */
+        .ta-auto { display: block; max-height: 60vh; overflow-y: auto; resize: none; }
+        .ta-bio { min-height: 12rem; }
+        .ta-anuncio { min-height: 6.5rem; }
+        #modal-form textarea.ta-auto {
+            min-height: 7.5rem; max-height: 16rem;
+            padding: 0.75rem 0.9rem; font-size: 0.95rem; line-height: 1.5;
+            resize: none;
+        }
+        @media (max-width: 640px) {
+            .ta-bio { min-height: 10rem; }
+            #modal-form textarea.ta-auto { min-height: 6.5rem; padding: 0.6rem 0.75rem; font-size: 16px; }
+        }
+
+        /* Botón "volver arriba" (solo se muestra en Mis productos, ver actualizarBtnScrollTop en dashboard.js) */
+        .btn-scroll-top {
+            position: fixed; z-index: 20;
+            right: max(1rem, env(safe-area-inset-right));
+            bottom: max(1rem, env(safe-area-inset-bottom));
+            width: 44px; height: 44px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: #0b0c10; color: #facc15; border: 0; cursor: pointer;
+            box-shadow: 0 8px 22px rgba(11, 12, 16, 0.3);
+            opacity: 0; visibility: hidden; pointer-events: none;
+            transform: translateY(10px);
+            transition: opacity .2s ease, transform .2s ease, visibility 0s linear .2s, background-color .15s;
+        }
+        .btn-scroll-top.visible {
+            opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0);
+            transition: opacity .2s ease, transform .2s ease, visibility 0s linear 0s, background-color .15s;
+        }
+        .btn-scroll-top:hover { background: #1e293b; }
+        .btn-scroll-top:active { transform: scale(0.92); }
+        .btn-scroll-top:focus-visible { outline: 2px solid #facc15; outline-offset: 2px; }
+        @media (min-width: 640px) {
+            .btn-scroll-top { right: 1.5rem; bottom: 1.5rem; width: 48px; height: 48px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .btn-scroll-top, .btn-scroll-top.visible { transition-duration: 0.01ms !important; }
+        }
+
+        /* Campo de categoría: botón con aspecto de select que abre el selector visual */
+        #modal-form .cat-group { position: relative; }
+        #modal-form select.cat-select-oculto {
+            position: absolute; left: 0; bottom: 0;
+            width: 1px; height: 1px; padding: 0; border: 0;
+            opacity: 0; pointer-events: none;
+        }
+        #modal-form .cat-trigger {
+            width: 100%; min-height: 44px;
+            display: flex; align-items: center; gap: 0.6rem;
+            padding: 0.4rem 0.75rem 0.4rem 0.5rem;
+            background: var(--mp-surface-2);
+            border: 1px solid var(--mp-border);
+            border-radius: var(--mp-radius-sm);
+            font-family: inherit; font-size: 0.875rem; font-weight: 600;
+            color: var(--mp-text); text-align: left; cursor: pointer;
+            outline: none;
+            transition: border-color .15s, background .15s, box-shadow .15s;
+        }
+        #modal-form .cat-trigger:hover { border-color: var(--mp-border-light); }
+        #modal-form .cat-trigger:focus-visible { background: #fff; border-color: var(--mp-dark); box-shadow: 0 0 0 4px var(--mp-accent-glow); }
+        #modal-form .cat-trigger.invalid { border-color: var(--mp-red); box-shadow: 0 0 0 3px var(--mp-red-dim); }
+        #modal-form .cat-trigger-thumb {
+            width: 32px; height: 32px; flex-shrink: 0;
+            border-radius: 8px; overflow: hidden; background: #f1f5f9;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #modal-form .cat-trigger-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        #modal-form .cat-trigger-thumb .cat-opcion-inicial { font-size: 1rem; }
+        #modal-form .cat-trigger.vacio .cat-trigger-thumb { display: none; }
+        #modal-form .cat-trigger.vacio { padding-left: 0.85rem; }
+        #modal-form .cat-trigger-texto { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #modal-form .cat-trigger.vacio .cat-trigger-texto { color: var(--mp-text-muted); font-weight: 500; }
+        #modal-form .cat-trigger-flecha { flex-shrink: 0; color: var(--mp-text-muted); }
+
+        /* Segundo modal: selector de categorías con imagen (se abre por encima del formulario) */
+        #modal-categorias {
+            --mp-surface: #ffffff;
+            --mp-surface-2: #f8fafc;
+            --mp-border: #e2e8f0;
+            --mp-border-light: #cbd5e1;
+            --mp-text: #0f172a;
+            --mp-text-muted: #94a3b8;
+            --mp-accent: #facc15;
+            --mp-accent-glow: rgba(250, 204, 21, 0.18);
+            --mp-dark: #0b0c10;
+            --mp-radius: 16px;
+
+            position: fixed; top: 0; left: 0; right: 0; z-index: 55;
+            height: 100vh; height: 100dvh; height: var(--app-height, 100dvh);
+            background: rgba(11, 12, 16, 0.75);
+            display: flex; align-items: center; justify-content: center;
+            padding: 1.25rem;
+            opacity: 0; visibility: hidden; pointer-events: none;
+            transition: opacity .25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear .25s;
+        }
+        #modal-categorias.open {
+            opacity: 1; visibility: visible; pointer-events: auto;
+            transition: opacity .25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear 0s;
+        }
+        #modal-categorias .cat-modal {
+            position: relative;
+            background: var(--mp-surface);
+            width: 100%; max-width: 560px;
+            max-height: min(calc(var(--app-height, 100dvh) * 0.85), 640px);
+            display: flex; flex-direction: column; overflow: hidden;
+            border-radius: var(--mp-radius);
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+            transform: translateY(24px) scale(0.96); opacity: 0;
+            transition: transform .32s cubic-bezier(0.16, 1, 0.3, 1), opacity .25s ease-out;
+        }
+        #modal-categorias.open .cat-modal { transform: translateY(0) scale(1); opacity: 1; }
+        @media (prefers-reduced-motion: reduce) {
+            #modal-categorias, #modal-categorias .cat-modal { transition-duration: 0.01ms !important; }
+        }
+        #modal-categorias .cat-modal-header {
+            flex-shrink: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+            padding: 1.1rem 1.25rem 0.9rem; border-bottom: 1px solid var(--mp-border);
+        }
+        #modal-categorias .cat-modal-title { font-size: 1.05rem; font-weight: 800; color: var(--mp-text); letter-spacing: -0.01em; line-height: 1.2; margin: 0; }
+        #modal-categorias .cat-modal-subtitle { display: block; font-size: 0.75rem; color: var(--mp-text-muted); margin-top: 0.15rem; font-weight: 500; }
+        #modal-categorias .cat-modal-close {
+            width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%;
+            background: var(--mp-surface-2); border: 1px solid var(--mp-border); color: var(--mp-text-muted);
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            transition: background-color .15s, color .15s;
+        }
+        #modal-categorias .cat-modal-close:hover { background: var(--mp-border); color: var(--mp-text); }
+        #modal-categorias .cat-modal-body {
+            position: relative; flex: 1; overflow-y: auto; overscroll-behavior: contain;
+            padding: 1rem 1.25rem 1.25rem;
+        }
+        #modal-categorias .cat-modal-footer {
+            flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+            padding: 0.75rem 1.25rem;
+            background: var(--mp-surface-2); border-top: 1px solid var(--mp-border);
+        }
+        #modal-categorias .cat-modal-footer-texto { flex: 1; min-width: 0; font-size: 0.75rem; font-weight: 600; color: #475569; line-height: 1.25; }
+        #modal-categorias .cat-btn-pedir {
+            flex-shrink: 0; display: inline-flex; align-items: center; gap: 0.45rem;
+            padding: 0.6rem 0.95rem; border: 0; border-radius: 10px;
+            background: #10b981; color: #fff;
+            font-family: inherit; font-size: 0.78rem; font-weight: 800; cursor: pointer;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+            transition: background-color .15s, transform .1s;
+        }
+        #modal-categorias .cat-btn-pedir:hover { background: #059669; }
+        #modal-categorias .cat-btn-pedir:active { transform: scale(0.96); }
+        #modal-categorias .cat-btn-pedir:focus-visible { outline: 2px solid var(--mp-dark); outline-offset: 2px; }
+        #modal-categorias .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 0.6rem; }
+        #modal-categorias .cat-opcion {
+            position: relative;
+            display: flex; flex-direction: column; gap: 0.4rem;
+            padding: 0.4rem 0.4rem 0.55rem;
+            background: var(--mp-surface); border: 2px solid var(--mp-border); border-radius: 12px;
+            cursor: pointer; text-align: center; font-family: inherit;
+            transition: border-color .15s, box-shadow .15s, transform .1s;
+        }
+        #modal-categorias .cat-opcion:hover { border-color: var(--mp-border-light); }
+        #modal-categorias .cat-opcion:active { transform: scale(0.97); }
+        #modal-categorias .cat-opcion:focus-visible { outline: 2px solid var(--mp-dark); outline-offset: 2px; }
+        #modal-categorias .cat-opcion.activa { border-color: var(--mp-dark); box-shadow: 0 0 0 3px var(--mp-accent-glow); }
+        #modal-categorias .cat-opcion-img {
+            display: flex; align-items: center; justify-content: center;
+            width: 100%; aspect-ratio: 1 / 1; border-radius: 8px; overflow: hidden; background: #f1f5f9;
+        }
+        #modal-categorias .cat-opcion-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .cat-opcion-inicial { font-size: 1.5rem; font-weight: 800; color: #94a3b8; }
+        #modal-categorias .cat-opcion-nombre {
+            font-size: 0.76rem; font-weight: 700; line-height: 1.2; color: var(--mp-text);
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+            overflow: hidden; overflow-wrap: anywhere;
+        }
+        #modal-categorias .cat-opcion-check {
+            position: absolute; top: 0.6rem; right: 0.6rem;
+            width: 22px; height: 22px; border-radius: 50%;
+            background: var(--mp-accent); color: var(--mp-dark);
+            display: none; align-items: center; justify-content: center;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+        }
+        #modal-categorias .cat-opcion.activa .cat-opcion-check { display: flex; }
+        @media (max-width: 640px) {
+            /* Igual que el modal de producto: en mobile entra como hoja desde abajo */
+            #modal-categorias { padding: 0; align-items: flex-end; }
+            #modal-categorias .cat-modal {
+                max-width: 100%;
+                max-height: calc(var(--app-height, 100dvh) * 0.88);
+                border-radius: var(--mp-radius) var(--mp-radius) 0 0;
+                transform: translateY(100%); opacity: 1;
+            }
+            #modal-categorias.open .cat-modal { transform: translateY(0); }
+            #modal-categorias .cat-modal-body { padding: 0.8rem 1rem 1rem; }
+            #modal-categorias .cat-modal-footer { padding: 0.65rem 1rem max(0.65rem, env(safe-area-inset-bottom)); }
+            #modal-categorias .cat-grid { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+            #modal-categorias .cat-opcion-nombre { font-size: 0.7rem; }
+        }
 
         #modal-form input[type="text"],
         #modal-form input[type="number"],
@@ -1037,7 +1237,7 @@
                                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
                                     Descripción / Bio de la marca
                                 </label>
-                                <textarea id="p-bio" rows="4" class="w-full bg-slate-50/50 border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 text-slate-900 font-medium text-sm focus:bg-white focus:border-obsidian focus:ring-4 focus:ring-yellow-400/20 outline-none transition-all resize-none" placeholder="Cuéntale a la comunidad qué hace única a tu marca..."></textarea>
+                                <textarea id="p-bio" rows="7" data-autogrow class="ta-auto ta-bio w-full bg-slate-50/50 border border-slate-200 rounded-xl sm:rounded-2xl p-3.5 sm:p-4 text-slate-900 font-medium text-base leading-relaxed focus:bg-white focus:border-obsidian focus:ring-4 focus:ring-yellow-400/20 outline-none transition-all resize-none" placeholder="Cuéntale a la comunidad qué hace única a tu marca..."></textarea>
                             </div>
                         </div>
                     </div>
@@ -1367,9 +1567,9 @@
                             <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
                                 Texto del anuncio
                             </label>
-                            <textarea id="p-anuncio" rows="2" maxlength="120" oninput="actualizarContadorAnuncio()"
+                            <textarea id="p-anuncio" rows="3" maxlength="120" data-autogrow oninput="actualizarContadorAnuncio()"
                                 placeholder='Ej: "Hoy hacemos envíos gratis en la zona", "Estamos de vacaciones hasta el lunes", "Tomando pedidos para el fin de semana"'
-                                class="w-full bg-slate-50/50 border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 text-slate-900 font-semibold text-sm focus:bg-white focus:border-obsidian focus:ring-4 focus:ring-yellow-400/20 outline-none transition-all resize-none"></textarea>
+                                class="ta-auto ta-anuncio w-full bg-slate-50/50 border border-slate-200 rounded-xl sm:rounded-2xl p-3.5 sm:p-4 text-slate-900 font-semibold text-base leading-relaxed focus:bg-white focus:border-obsidian focus:ring-4 focus:ring-yellow-400/20 outline-none transition-all resize-none"></textarea>
                             <p class="text-xs text-slate-400 text-right"><span id="contador-anuncio">0</span>/120</p>
                         </div>
 
@@ -1568,6 +1768,13 @@
         </main>
     </div>
 
+    <!-- BOTÓN VOLVER ARRIBA (solo visible en la sección Mis productos).
+         Va fuera de <section> a propósito: .animate-fade-in deja un transform
+         aplicado y eso rompería el position:fixed. -->
+    <button type="button" id="btn-scroll-top" class="btn-scroll-top" onclick="volverArribaProductos()" aria-label="Volver arriba">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 15l-6-6-6 6"/></svg>
+    </button>
+
     <!-- MODAL PRODUCTO -->
     <div id="modal-form">
         <form id="form-producto" class="modal modal-lg">
@@ -1605,15 +1812,22 @@
                                 oninput="sanitizarInputPrecio(this)" onblur="formatearInputPrecio(this)">
                             <p class="field-hint">Opcional. Si lo completás (y es mayor al precio actual), en la tienda aparece tachado con un cartel de % OFF.</p>
                         </div>
-                        <div class="form-group span-2">
+                        <div class="form-group span-2 cat-group">
                             <label>Categoría <span class="required">*</span></label>
-                            <select id="categoria" required>
+                            <!-- El <select> sigue siendo la fuente de verdad (valor + validación "required"),
+                                 pero queda oculto: la persona elige desde el selector visual de abajo. -->
+                            <select id="categoria" class="cat-select-oculto" required tabindex="-1" aria-hidden="true">
                                 <option value="" disabled selected>Elegí categoría</option>
                             </select>
+                            <button type="button" id="btn-categoria" class="cat-trigger vacio" aria-haspopup="dialog" onclick="abrirSelectorCategorias()">
+                                <span id="cat-trigger-thumb" class="cat-trigger-thumb"></span>
+                                <span id="cat-trigger-texto" class="cat-trigger-texto">Elegí categoría</span>
+                                <svg class="cat-trigger-flecha" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                            </button>
                         </div>
                         <div class="form-group span-2">
                             <label>Descripción corta</label>
-                            <textarea id="descripcion" rows="2" placeholder="Contale al comprador qué es, para qué sirve o qué lo hace especial"></textarea>
+                            <textarea id="descripcion" rows="5" data-autogrow class="ta-auto" placeholder="Contale al comprador qué es, para qué sirve o qué lo hace especial"></textarea>
                         </div>
                     </div>
                 </div>
@@ -1693,6 +1907,31 @@
                 <button type="submit" id="btn-guardar-producto" class="btn btn-primary">Guardar</button>
             </div>
         </form>
+    </div>
+
+    <!-- MODAL SELECTOR DE CATEGORÍAS (se abre por encima del modal de producto) -->
+    <div id="modal-categorias" onclick="if (event.target === this) cerrarSelectorCategorias()">
+        <div class="cat-modal" role="dialog" aria-modal="true" aria-labelledby="cat-modal-titulo">
+            <div class="cat-modal-header">
+                <div>
+                    <h3 id="cat-modal-titulo" class="cat-modal-title">Elegí la categoría</h3>
+                    <span class="cat-modal-subtitle">Fijate en la imagen: es la sección de la tienda donde van a encontrar tu producto</span>
+                </div>
+                <button type="button" class="cat-modal-close" onclick="cerrarSelectorCategorias()" aria-label="Cerrar">
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div id="cat-modal-body" class="cat-modal-body">
+                <div id="grid-categorias" class="cat-grid"></div>
+            </div>
+            <div class="cat-modal-footer">
+                <span class="cat-modal-footer-texto">¿No encontrás la categoría de tu producto?</span>
+                <button type="button" class="cat-btn-pedir" onclick="pedirCategoriaWhatsapp()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.29.173-1.414-.074-.124-.272-.198-.57-.347z"/><path d="M12.001 2C6.478 2 2 6.478 2 12c0 1.876.52 3.63 1.42 5.13L2 22l4.994-1.396A9.947 9.947 0 0012 22c5.523 0 10-4.478 10-10S17.523 2 12 2zm0 18.13a8.1 8.1 0 01-4.135-1.13l-.297-.176-3.06.856.822-2.997-.194-.31A8.113 8.113 0 013.87 12c0-4.487 3.643-8.13 8.13-8.13 4.487 0 8.13 3.643 8.13 8.13 0 4.487-3.643 8.13-8.13 8.13z"/></svg>
+                    Pedir categoría
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- MODAL TÉRMINOS Y CONDICIONES -->
