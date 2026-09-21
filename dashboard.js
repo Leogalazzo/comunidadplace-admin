@@ -294,8 +294,11 @@ async function cargarCategorias() {
     // No dejamos elegir (ni filtrar por) categorías que el admin ocultó de
     // la tienda pública (columna `activa`).
     categorias = data.filter(c => c.activa !== false);
+    const seleccionPrevia = selectCategoria.value;
     selectCategoria.innerHTML = '<option value="" disabled selected>Elegí categoría</option>'
         + categorias.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+    if (seleccionPrevia) selectCategoria.value = seleccionPrevia;
+    renderGridCategorias();
 
     // Select del filtro de "Mis productos" (conserva la selección si ya había una)
     const selectFiltroCategoria = document.getElementById('filtro-categoria-productos');
@@ -306,6 +309,161 @@ async function cargarCategorias() {
         selectFiltroCategoria.value = seleccionActual;
     }
 }
+
+// ------------------------------------------------------------
+// SELECTOR DE CATEGORÍAS CON IMAGEN (modal de producto: nuevo y edición)
+// ------------------------------------------------------------
+// El <select id="categoria"> queda oculto y sigue siendo la fuente de
+// verdad (su .value se lee al guardar y su "required" valida el form).
+// En el formulario se ve un botón con aspecto de select (#btn-categoria)
+// que abre un segundo modal (#modal-categorias) con una grilla de
+// tarjetas: imagen de la categoría + nombre. Así el formulario no crece.
+function renderGridCategorias() {
+    const grid = document.getElementById('grid-categorias');
+    if (!grid) return;
+    grid.replaceChildren();
+
+    categorias.forEach(c => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cat-opcion';
+        btn.dataset.id = String(c.id);
+        btn.title = c.nombre;
+
+        const media = document.createElement('span');
+        media.className = 'cat-opcion-img';
+        media.appendChild(crearMediaCategoria(c, 160));
+
+        const nombre = document.createElement('span');
+        nombre.className = 'cat-opcion-nombre';
+        nombre.textContent = c.nombre;
+
+        const check = document.createElement('span');
+        check.className = 'cat-opcion-check';
+        check.setAttribute('aria-hidden', 'true');
+        check.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>';
+
+        btn.append(media, nombre, check);
+        grid.appendChild(btn);
+    });
+
+    marcarCategoriaActiva();
+}
+
+// Imagen de la categoría (miniatura) o, si no tiene / falla al cargar, la inicial del nombre.
+function crearMediaCategoria(c, size) {
+    const inicial = () => {
+        const span = document.createElement('span');
+        span.className = 'cat-opcion-inicial';
+        span.textContent = (c.nombre || '?').trim().charAt(0).toUpperCase();
+        return span;
+    };
+    if (!c.imagen_url) return inicial();
+    const img = document.createElement('img');
+    img.src = miniaturaCloudinary(c.imagen_url, size);
+    img.alt = '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.onerror = () => img.replaceWith(inicial());
+    return img;
+}
+
+// Sincroniza todo con el valor actual del <select>: la tarjeta resaltada
+// en la grilla y lo que muestra el botón del formulario.
+// alAbrir: true → el formulario se acaba de abrir: limpia el estado de error.
+function marcarCategoriaActiva({ alAbrir = false } = {}) {
+    const valor = String(selectCategoria.value || '');
+    const grid = document.getElementById('grid-categorias');
+    if (grid) {
+        grid.querySelectorAll('.cat-opcion').forEach(btn => {
+            const esActiva = valor !== '' && btn.dataset.id === valor;
+            btn.classList.toggle('activa', esActiva);
+            btn.setAttribute('aria-pressed', esActiva ? 'true' : 'false');
+        });
+    }
+
+    const trigger = document.getElementById('btn-categoria');
+    const thumb = document.getElementById('cat-trigger-thumb');
+    const texto = document.getElementById('cat-trigger-texto');
+    if (!trigger || !thumb || !texto) return;
+
+    const cat = valor ? categorias.find(c => String(c.id) === valor) : null;
+    trigger.classList.toggle('vacio', !cat);
+    if (cat) {
+        texto.textContent = cat.nombre;
+        thumb.replaceChildren(crearMediaCategoria(cat, 80));
+    } else {
+        texto.textContent = 'Elegí categoría';
+        thumb.replaceChildren();
+    }
+    if (cat || alAbrir) trigger.classList.remove('invalid');
+}
+
+function abrirSelectorCategorias() {
+    const overlay = document.getElementById('modal-categorias');
+    if (!overlay) return;
+    overlay.classList.add('open');
+
+    // Deja a la vista la categoría ya elegida (o vuelve al inicio)
+    const cuerpo = document.getElementById('cat-modal-body');
+    const activa = document.querySelector('#grid-categorias .cat-opcion.activa');
+    cuerpo.scrollTop = activa
+        ? Math.max(0, activa.offsetTop - (cuerpo.clientHeight - activa.offsetHeight) / 2)
+        : 0;
+}
+
+function cerrarSelectorCategorias() {
+    document.getElementById('modal-categorias')?.classList.remove('open');
+}
+
+// Abre WhatsApp con un mensaje pre-armado para pedir una categoría nueva.
+// Incluye usuario y tienda para saber rápido quién la pide.
+function pedirCategoriaWhatsapp() {
+    const usuario = perfilActual ? perfilActual.usuario : '';
+    const tienda = emprendedorActual && emprendedorActual.nombre_tienda ? emprendedorActual.nombre_tienda : '';
+    const texto = `Hola! Quiero pedir una categoría nueva para mis productos.\n\nUsuario: @${usuario}` + (tienda ? `\nTienda: ${tienda}` : '') + `\n\nCategoría que necesito: `;
+    const url = `https://wa.me/5493644539325?text=${encodeURIComponent(texto)}`;
+    window.open(url, '_blank', 'noopener');
+}
+
+document.getElementById('grid-categorias')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.cat-opcion');
+    if (!btn) return;
+
+    // Tocar la categoría que ya está elegida la deselecciona (el modal
+    // queda abierto para poder elegir otra). El select vuelve al
+    // placeholder, así que "required" sigue exigiendo una categoría.
+    if (String(selectCategoria.value) === btn.dataset.id) {
+        selectCategoria.value = '';
+        selectCategoria.dispatchEvent(new Event('change', { bubbles: true }));
+        marcarCategoriaActiva();
+        return;
+    }
+
+    selectCategoria.value = btn.dataset.id;
+    selectCategoria.dispatchEvent(new Event('change', { bubbles: true }));
+    marcarCategoriaActiva();
+    cerrarSelectorCategorias();
+});
+
+// Escape cierra solo el selector (no el formulario que está debajo)
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const overlay = document.getElementById('modal-categorias');
+    if (overlay && overlay.classList.contains('open')) {
+        e.stopPropagation();
+        cerrarSelectorCategorias();
+    }
+}, true);
+
+// Si intentan guardar sin elegir categoría, el select oculto dispara
+// "invalid": marcamos el botón en rojo y lo traemos a la vista.
+selectCategoria.addEventListener('invalid', () => {
+    const trigger = document.getElementById('btn-categoria');
+    if (!trigger) return;
+    trigger.classList.add('invalid');
+    trigger.scrollIntoView({ block: 'center', behavior: 'smooth' });
+});
 
 // Buscador con debounce: no filtra en cada tecla, espera a que la persona pare de escribir.
 const onFiltroBusquedaProductos = debounce(() => {
@@ -497,7 +655,85 @@ function mostrarSeccion(seccionId) {
     // anterior (ej: si te ibas hasta el final de "Mis datos", entrabas a
     // "Mis productos" ya scrolleado al final).
     window.scrollTo(0, 0);
+    actualizarBtnScrollTop();
+    ajustarTextareasAutogrow();
 }
+
+// ------------------------------------------------------------
+// TEXTAREAS GRANDES CON AUTO-AJUSTE (bio, anuncio, descripción de producto)
+// ------------------------------------------------------------
+// Los <textarea data-autogrow> arrancan con un alto cómodo (ver .ta-auto en
+// el CSS) y crecen a medida que se escribe, hasta el max-height del CSS;
+// pasado ese punto scrollean por dentro.
+function autoajustarTextarea(el) {
+    // Oculto (sección con .hidden): scrollHeight daría 0, se ajusta al mostrarse
+    if (!el || el.offsetParent === null) return;
+
+    // Al achicar el alto un instante para medir, el navegador puede corregir
+    // el scroll de la página o del modal: lo guardamos y lo restauramos.
+    const cuerpoModal = el.closest('.modal-body');
+    const scrollModal = cuerpoModal ? cuerpoModal.scrollTop : 0;
+    const scrollVentana = window.scrollY;
+
+    const bordes = el.offsetHeight - el.clientHeight;
+    el.style.height = 'auto';
+    el.style.height = (el.scrollHeight + bordes) + 'px';
+
+    if (cuerpoModal) cuerpoModal.scrollTop = scrollModal;
+    if (window.scrollY !== scrollVentana) window.scrollTo(0, scrollVentana);
+}
+
+function ajustarTextareasAutogrow() {
+    document.querySelectorAll('textarea[data-autogrow]').forEach(autoajustarTextarea);
+}
+
+document.addEventListener('input', (e) => {
+    if (e.target.matches && e.target.matches('textarea[data-autogrow]')) autoajustarTextarea(e.target);
+});
+window.addEventListener('resize', debounce(ajustarTextareasAutogrow, 150));
+
+// ------------------------------------------------------------
+// BOTÓN "VOLVER ARRIBA" — solo en la sección Mis productos
+// ------------------------------------------------------------
+// Aparece mientras se scrollea (una vez pasados unos 400px) y solo si
+// #section-productos está visible; unos instantes después de dejar de
+// scrollear se esconde solo, y vuelve a aparecer al scrollear de nuevo.
+// En cualquier otra sección queda oculto.
+const BTN_SCROLL_TOP_ESPERA_MS = 1500;
+
+function actualizarBtnScrollTop() {
+    const btn = document.getElementById('btn-scroll-top');
+    if (!btn) return;
+    const seccion = document.getElementById('section-productos');
+    const enProductos = !!seccion && !seccion.classList.contains('hidden');
+
+    clearTimeout(btn._ocultarTimer);
+
+    if (!(enProductos && window.scrollY > 400)) {
+        btn.classList.remove('visible');
+        return;
+    }
+
+    btn.classList.add('visible');
+    const programarOcultado = () => {
+        btn._ocultarTimer = setTimeout(() => {
+            // Si el dedo/mouse/teclado está justo sobre el botón, no se lo sacamos
+            if (btn.matches(':hover') || document.activeElement === btn) {
+                programarOcultado();
+                return;
+            }
+            btn.classList.remove('visible');
+        }, BTN_SCROLL_TOP_ESPERA_MS);
+    };
+    programarOcultado();
+}
+
+function volverArribaProductos() {
+    const reducir = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: reducir ? 'auto' : 'smooth' });
+}
+
+window.addEventListener('scroll', actualizarBtnScrollTop, { passive: true });
 
 async function renderProductos(mostrarSpinner = false) {
     if (mostrarSpinner) {
@@ -720,6 +956,8 @@ function abrirFormulario() {
     document.body.classList.add('overflow-hidden');
     document.getElementById('cuerpo-modal-producto').scrollTop = 0;
     ajustarModalAlViewportVisible();
+    marcarCategoriaActiva({ alAbrir: true });
+    ajustarTextareasAutogrow();
 }
 
 // ============================================================
@@ -774,6 +1012,7 @@ document.getElementById('cuerpo-modal-producto').addEventListener('focusin', (e)
 });
 
 function cerrarFormulario() {
+    cerrarSelectorCategorias();
     modal.classList.remove('open');
     modal.style.top = '';
     form.reset();
@@ -855,6 +1094,8 @@ async function editarProducto(id) {
     document.body.classList.add('overflow-hidden');
     document.getElementById('cuerpo-modal-producto').scrollTop = 0;
     ajustarModalAlViewportVisible();
+    marcarCategoriaActiva({ alAbrir: true });
+    ajustarTextareasAutogrow();
 }
 
 // Muestra la preview de la imagen del producto (o el placeholder si está vacía/URL inválida)
@@ -1304,6 +1545,7 @@ async function cargarPerfilEmprendedor() {
     actualizarPreviewLogo(data.logo_url);
     actualizarPreviewBanner(data.banner_url);
     actualizarContadorAnuncio();
+    ajustarTextareasAutogrow();
 }
 
 // ============================================================
@@ -1756,6 +1998,7 @@ async function quitarAnuncio() {
     if (!ok) return;
 
     document.getElementById('p-anuncio').value = '';
+    ajustarTextareasAutogrow();
     await guardarAnuncio();
 }
 
