@@ -154,88 +154,104 @@ function renderEmprendedores() {
 // Tarjeta de emprendedor/comercio reutilizada tanto en la grilla principal
 // de "Emprendedores" como en la de "Beneficios".
 function tarjetaEmprendedorHTML(e) {
-        const inicial = e.nombre_tienda ? e.nombre_tienda.charAt(0).toUpperCase() : '?';
-        const avatar = e.logo_url
-            ? `<img src="${miniaturaCloudinary(e.logo_url, 400)}" alt="${escapeHtml(e.nombre_tienda)}" class="w-full h-full object-cover" loading="lazy" decoding="async">`
-            : `<div class="w-full h-full flex items-center justify-center bg-gradient-to-tr from-yellow-400 to-amber-300 text-black font-black text-2xl sm:text-4xl">${escapeHtml(inicial)}</div>`;
+    const inicial = e.nombre_tienda ? e.nombre_tienda.charAt(0).toUpperCase() : '?';
+    const avatar = e.logo_url
+        ? `<img src="${miniaturaCloudinary(e.logo_url, 600)}" alt="${escapeHtml(e.nombre_tienda)}" class="w-full h-full object-cover" loading="lazy" decoding="async">`
+        : `<div class="emp-inicial w-full h-full flex items-center justify-center bg-gradient-to-tr from-yellow-400 to-amber-300 text-black font-black">${escapeHtml(inicial)}</div>`;
 
-        // Estado real de la tienda: activo / bloqueada a mano / vencida por
-        // falta de pago (mes gratis o suscripción sin renovar).
-        const acceso = calcularEstadoAcceso(e);
-        const bloqueadaPorPago = acceso.bloqueado && acceso.motivo === 'pago';
-        const badge = !acceso.bloqueado
-            ? { texto: 'Activo', clase: 'bg-emerald-500/95 text-white' }
-            : acceso.motivo === 'admin'
-                ? { texto: 'Bloqueado', clase: 'bg-red-500/95 text-white' }
-                : { texto: 'Vencida', clase: 'bg-orange-500/95 text-white' };
+    // Estado real de la tienda: activo / bloqueada a mano / vencida por
+    // falta de pago (mes gratis o suscripción sin renovar).
+    const acceso = calcularEstadoAcceso(e);
+    const bloqueadaPorPago = acceso.bloqueado && acceso.motivo === 'pago';
+    const badge = !acceso.bloqueado
+        ? { texto: 'Activo', clase: 'bg-emerald-500/95 text-white' }
+        : acceso.motivo === 'admin'
+            ? { texto: 'Bloqueado', clase: 'bg-red-500/95 text-white' }
+            : { texto: 'Vencida', clase: 'bg-orange-500/95 text-white' };
 
-        // El botón de la card cambia según el motivo: una tienda vencida
-        // por pago se reactiva con "activarConPago" (asigna 30 días), no
-        // con el toggle de bloqueo manual del admin.
-        const accionBoton = bloqueadaPorPago ? `activarConPago('${e.id}')` : `toggleEmprendedor('${e.id}', ${e.activo})`;
-        const textoBoton = bloqueadaPorPago ? 'Activar y asignar mes' : (e.activo ? 'Bloquear' : 'Activar');
-        const claseBoton = bloqueadaPorPago
-            ? 'bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white'
-            : (e.activo ? 'bg-red-50 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white');
+    // El estado se muestra de dos formas según el layout (ver .emp-* en admin.html):
+    // encima de la foto en la tarjeta vertical, y dentro de la info en la tarjeta de lista.
+    const claseBadge = `text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-sm ${badge.clase}`;
+    const badgeSobreFoto = `<span class="emp-badge-overlay absolute top-3 left-3 ${claseBadge}">${badge.texto}</span>`;
+    const badgeEnInfo = `<span class="emp-badge-inline self-start mb-0.5 ${claseBadge}">${badge.texto}</span>`;
 
-        // En modo selección la card no abre el detalle: se toca para
-        // marcarla/desmarcarla para el aviso masivo. Se ocultan los botones
-        // de bloquear/activar para no disparar acciones por accidente
-        // mientras se está eligiendo a quién avisar.
-        if (modoSeleccionAviso) {
-            const seleccionado = seleccionAvisoIds.has(String(e.id));
-            return `
-        <div data-id-emprendedor="${e.id}"
-            class="bg-white rounded-xl sm:rounded-3xl border-2 ${seleccionado ? 'border-yellow-400' : 'border-slate-200'} shadow-sm overflow-hidden flex flex-col cursor-pointer transition-all"
-            onclick="toggleSeleccionAviso('${e.id}')">
-            <div class="relative aspect-square bg-slate-100 overflow-hidden">
+    const usuario = e.usuarios ? escapeHtml(e.usuarios.usuario) : '-';
+    const nombre = escapeHtml(e.nombre_tienda);
+
+    // El botón de la card cambia según el motivo: una tienda vencida
+    // por pago se reactiva con "activarConPago" (asigna 30 días), no
+    // con el toggle de bloqueo manual del admin.
+    const accionBoton = bloqueadaPorPago ? `activarConPago('${e.id}')` : `toggleEmprendedor('${e.id}', ${e.activo})`;
+    const textoBoton = bloqueadaPorPago ? 'Activar y asignar mes' : (e.activo ? 'Bloquear' : 'Activar');
+    const claseBoton = bloqueadaPorPago
+        ? 'bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white'
+        : (e.activo ? 'bg-red-50 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white');
+    const claseBotonAccion = 'w-full min-h-[2.5rem] px-3 py-2 rounded-xl font-black text-[11px] uppercase tracking-wide leading-tight transition-colors';
+
+    // En modo selección la card no abre el detalle: se toca para
+    // marcarla/desmarcarla para el aviso masivo. Se ocultan los botones
+    // de bloquear/activar para no disparar acciones por accidente
+    // mientras se está eligiendo a quién avisar.
+    if (modoSeleccionAviso) {
+        const seleccionado = seleccionAvisoIds.has(String(e.id));
+        return `
+    <div data-id-emprendedor="${e.id}"
+        class="emp-card relative bg-white rounded-2xl border-2 ${seleccionado ? 'border-yellow-400' : 'border-slate-200'} shadow-sm overflow-hidden flex flex-col cursor-pointer transition-all"
+        onclick="toggleSeleccionAviso('${e.id}')">
+        <div class="emp-top emp-top-solo">
+            <div class="emp-media bg-slate-100">
                 ${avatar}
                 ${seleccionado ? '<div class="absolute inset-0 bg-yellow-400/20"></div>' : ''}
-                <span class="absolute top-2 left-2 sm:top-3 sm:left-3 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm ${badge.clase}">
-                    ${badge.texto}
-                </span>
-                <div class="absolute top-2 right-2 sm:top-3 sm:right-3 w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 flex items-center justify-center shadow-sm transition-colors ${seleccionado ? 'bg-yellow-400 border-yellow-400' : 'bg-white/90 border-slate-300'}">
-                    ${seleccionado ? '<svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>' : ''}
-                </div>
+                ${badgeSobreFoto}
             </div>
-            <div class="p-3 sm:p-4 flex flex-col gap-1 sm:gap-1.5">
-                <span class="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${e.usuarios ? escapeHtml(e.usuarios.usuario) : '-'}</span>
-                <h3 class="font-extrabold text-slate-900 text-sm sm:text-base leading-snug line-clamp-1">${escapeHtml(e.nombre_tienda)}</h3>
+            <div class="emp-info flex flex-col gap-1">
+                ${badgeEnInfo}
+                <span class="text-xs font-semibold text-slate-400 truncate">@${usuario}</span>
+                <h3 class="font-extrabold text-slate-900 text-base leading-snug line-clamp-2">${nombre}</h3>
             </div>
         </div>
-    `;
-        }
+        <div class="absolute top-3 right-3 w-8 h-8 rounded-full border-2 flex items-center justify-center shadow-sm transition-colors ${seleccionado ? 'bg-yellow-400 border-yellow-400' : 'bg-white/90 border-slate-300'}">
+            ${seleccionado ? '<svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>' : ''}
+        </div>
+    </div>
+`;
+    }
 
-        return `
-        <div class="group bg-white rounded-xl sm:rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-900/5 hover:-translate-y-0.5 hover:border-slate-300 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer"
-            onclick="abrirModalDetalleEmprendedor('${e.id}')">
-            <div class="relative aspect-square bg-slate-100 overflow-hidden">
+    const whatsapp = e.whatsapp
+        ? `<svg class="w-3.5 h-3.5 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg><span class="truncate">${escapeHtml(e.whatsapp)}</span>`
+        : '<span class="italic text-slate-400 truncate">Sin WhatsApp cargado</span>';
+
+    return `
+    <div class="emp-card group relative bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-900/5 hover:-translate-y-0.5 hover:border-slate-300 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer"
+        onclick="abrirModalDetalleEmprendedor('${e.id}')">
+        <div class="emp-top">
+            <div class="emp-media bg-slate-100">
                 ${avatar}
-                <span class="absolute top-2 left-2 sm:top-3 sm:left-3 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm ${badge.clase}">
-                    ${badge.texto}
-                </span>
-                <button onclick="event.stopPropagation(); enviarAvisoIndividual('${e.id}')" title="Enviar aviso"
-                    class="absolute top-2 right-2 sm:top-3 sm:right-3 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/90 hover:bg-yellow-400 text-black flex items-center justify-center text-sm shadow-sm transition-colors">
-                    📣
-                </button>
+                ${badgeSobreFoto}
             </div>
-            <div class="p-3 sm:p-4 flex flex-col gap-1 sm:gap-1.5 flex-1">
-                <span class="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${e.usuarios ? escapeHtml(e.usuarios.usuario) : '-'}</span>
-                <h3 class="font-extrabold text-slate-900 text-sm sm:text-base leading-snug line-clamp-1">${escapeHtml(e.nombre_tienda)}</h3>
-                <p class="text-[11px] sm:text-xs text-slate-500 font-semibold truncate">${e.whatsapp ? escapeHtml(e.whatsapp) : 'Sin WhatsApp cargado'}</p>
-                <div class="mt-auto pt-2 sm:pt-2.5 flex flex-col gap-1.5">
-                    <button onclick="event.stopPropagation(); ${accionBoton}"
-                        class="w-full h-9 sm:h-auto py-0 sm:py-2.5 rounded-lg sm:rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-widest transition-colors ${claseBoton}">
-                        ${textoBoton}
-                    </button>
-                    <button onclick="event.stopPropagation(); toggleSoloBeneficios('${e.id}', ${!!e.solo_beneficios})"
-                        class="w-full h-9 sm:h-auto py-0 sm:py-2.5 rounded-lg sm:rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-widest transition-colors bg-purple-50 text-purple-600 hover:bg-purple-500 hover:text-white">
-                        ${e.solo_beneficios ? 'Volver a cuenta vendedora' : 'Pasar a solo beneficios'}
-                    </button>
-                </div>
+            <div class="emp-info flex flex-col gap-1">
+                ${badgeEnInfo}
+                <span class="text-xs font-semibold text-slate-400 truncate">@${usuario}</span>
+                <h3 class="font-extrabold text-slate-900 text-base leading-snug line-clamp-2">${nombre}</h3>
+                <p class="flex items-center gap-1.5 min-w-0 text-sm font-medium text-slate-500">${whatsapp}</p>
             </div>
         </div>
-    `;
+        <button onclick="event.stopPropagation(); enviarAvisoIndividual('${e.id}')" title="Enviar aviso" aria-label="Enviar aviso a ${nombre}"
+            class="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white border border-slate-200 hover:bg-yellow-400 hover:border-yellow-400 text-black flex items-center justify-center text-base shadow-sm transition-colors">
+            📣
+        </button>
+        <div class="emp-actions mt-auto flex flex-col gap-2">
+            <button onclick="event.stopPropagation(); ${accionBoton}"
+                class="${claseBotonAccion} ${claseBoton}">
+                ${textoBoton}
+            </button>
+            <button onclick="event.stopPropagation(); toggleSoloBeneficios('${e.id}', ${!!e.solo_beneficios})"
+                class="${claseBotonAccion} bg-purple-50 text-purple-600 hover:bg-purple-500 hover:text-white">
+                ${e.solo_beneficios ? 'Volver a cuenta vendedora' : 'Pasar a solo beneficios'}
+            </button>
+        </div>
+    </div>
+`;
 }
 
 // Sección "Beneficios": todos los comercios marcados como solo_beneficios,
@@ -862,7 +878,7 @@ async function cargarCategoriasAdmin() {
                         : obtenerSvgIconoCategoria(c.icono || elegirIconoCategoriaAuto(c.nombre))}
                     <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${oculta ? 'bg-gray-300' : 'bg-emerald-500'}" title="${oculta ? 'Oculta' : 'Visible'}"></span>
                 </span>
-                <p class="font-bold sm:font-extrabold text-slate-900 text-sm sm:text-base truncate flex-1 min-w-0">${escapeHtml(c.nombre)}</p>
+                <p class="font-bold sm:font-extrabold text-slate-900 text-sm sm:text-base leading-snug line-clamp-2 break-words flex-1 min-w-0">${escapeHtml(c.nombre)}</p>
                 <div class="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
                     <button onclick="toggleCategoria(${c.id}, ${oculta ? 'false' : 'true'})" title="${oculta ? 'Mostrar en la tienda' : 'Ocultar de la tienda'}" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-colors ${oculta ? 'text-emerald-500 hover:bg-emerald-50' : 'text-amber-500 hover:bg-amber-50'}">
                         ${oculta
