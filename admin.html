@@ -57,6 +57,32 @@
         .filtro-btn:hover { color: #0f172a; }
         .filtro-btn.filtro-activo { background: #ffffff; color: #0f172a; box-shadow: 0 1px 3px rgba(15,23,42,0.08); }
 
+        /* TARJETAS DE EMPRENDEDORES / COMERCIOS (secciones Emprendedores y Beneficios; el HTML de la
+           tarjeta lo arma tarjetaEmprendedorHTML en admin.js).
+           - Poco ancho (celular y tablet vertical con sidebar): una columna, tarjeta "de lista" con la
+             foto a la izquierda y la info a la derecha.
+           - Con lugar (640-767px sin sidebar, y desde 1024px): grilla de tarjetas verticales de mínimo 15rem. */
+        .emp-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
+        .emp-top { display: flex; gap: 0.875rem; padding: 0.875rem 0.875rem 0.25rem; }
+        .emp-top-solo { padding-bottom: 0.875rem; }
+        .emp-media { position: relative; flex: 0 0 auto; width: 5.5rem; height: 5.5rem; border-radius: 1rem; overflow: hidden; }
+        .emp-inicial { font-size: 2rem; }
+        .emp-info { flex: 1 1 0; min-width: 0; padding-right: 2.75rem; /* lugar para el botón 📣 / checkbox */ }
+        .emp-actions { padding: 0.5rem 0.875rem 0.875rem; }
+        .emp-badge-overlay { display: none; }
+        .emp-badge-inline { display: inline-flex; align-items: center; line-height: 1; }
+        @media (min-width: 640px) and (max-width: 767.98px), (min-width: 1024px) {
+            .emp-grid { grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1.25rem; }
+            .emp-top, .emp-top-solo { flex-direction: column; gap: 0; padding: 0; }
+            .emp-media { width: 100%; height: auto; aspect-ratio: 4 / 3; border-radius: 0; }
+            .emp-inicial { font-size: 3.5rem; }
+            .emp-info { flex: 0 0 auto; padding: 1rem 1.125rem 0.25rem; }
+            .emp-top-solo .emp-info { padding-bottom: 1.125rem; }
+            .emp-actions { padding: 0.5rem 1.125rem 1.125rem; }
+            .emp-badge-overlay { display: inline-flex; align-items: center; line-height: 1; }
+            .emp-badge-inline { display: none; }
+        }
+
         /* MODAL DETALLE EMPRENDEDOR: mismo patrón que el modal de producto de la
            tienda (index.html) — bottom-sheet en mobile, modal centrado en desktop. */
         #modal-detalle-overlay {
@@ -206,7 +232,7 @@
 
             <!-- SECCIÓN: EMPRENDEDORES -->
             <section id="section-emprendedores" class="animate-fade-in">
-                <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-6 md:mb-10 pb-6 border-b border-slate-200/80">
+                <header class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6 md:mb-10 pb-6 border-b border-slate-200/80">
                     <div>
                         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-400/10 border border-yellow-400/20 text-yellow-800 text-xs font-bold uppercase tracking-wider mb-3">
                             <span class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
@@ -221,14 +247,14 @@
                         <p id="contador-emprendedores" class="text-slate-400 text-xs font-bold uppercase tracking-wider mt-3"></p>
                     </div>
                     <button data-btn-modo-seleccion onclick="toggleModoSeleccionAviso()"
-                        class="btn-modo-seleccion-aviso h-11 sm:h-12 px-4 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors shrink-0 self-start sm:self-auto">
+                        class="btn-modo-seleccion-aviso h-11 sm:h-12 px-4 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors shrink-0 self-start lg:self-auto">
                         📣 <span>Enviar aviso a varios</span>
                     </button>
                 </header>
 
                 <!-- BUSCADOR Y FILTRO -->
-                <div class="flex flex-col sm:flex-row gap-2.5 sm:gap-3 mb-5">
-                    <div class="relative flex-1">
+                <div class="flex flex-col lg:flex-row gap-2.5 sm:gap-3 mb-5">
+                    <div class="relative flex-1 min-w-0">
                         <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"/></svg>
                         <input id="buscador-emprendedores" type="text" inputmode="search" autocomplete="off"
                             placeholder="Buscar por tienda, usuario o WhatsApp..."
@@ -238,7 +264,7 @@
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
-                    <div id="filtro-estado-emprendedores" class="grid grid-cols-3 sm:flex gap-1.5 bg-slate-100 rounded-xl p-1 sm:shrink-0">
+                    <div id="filtro-estado-emprendedores" class="grid grid-cols-3 lg:flex gap-1.5 bg-slate-100 rounded-xl p-1 lg:shrink-0">
                         <button data-filtro="todos" onclick="setFiltroEmprendedores('todos')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Todos</button>
                         <button data-filtro="activo" onclick="setFiltroEmprendedores('activo')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Activos</button>
                         <button data-filtro="bloqueado" onclick="setFiltroEmprendedores('bloqueado')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Bloqueados</button>
@@ -246,7 +272,7 @@
                 </div>
 
                 <!-- GRID DE EMPRENDEDORES -->
-                <div id="grid-emprendedores" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-5">
+                <div id="grid-emprendedores" class="emp-grid">
                     <div class="col-span-full flex flex-col items-center justify-center gap-3 py-24 text-slate-400 font-semibold">
                         <svg class="w-6 h-6 animate-spin text-slate-300" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                         <span>Cargando emprendedores...</span>
@@ -256,8 +282,8 @@
 
             <!-- SECCIÓN: BENEFICIOS (comercios "solo beneficios": no venden, solo dan descuentos) -->
             <section id="section-beneficios" class="hidden animate-fade-in">
-                <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-6 md:mb-10 pb-6 border-b border-slate-200/80">
-                    <div>
+                <header class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6 md:mb-10 pb-6 border-b border-slate-200/80">
+                    <div class="min-w-0">
                         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-700 text-xs font-bold uppercase tracking-wider mb-3">
                             <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
                             Solo beneficios
@@ -271,13 +297,13 @@
                         <p id="contador-beneficios" class="text-slate-400 text-xs font-bold uppercase tracking-wider mt-3"></p>
                     </div>
                     <button data-btn-modo-seleccion onclick="toggleModoSeleccionAviso()"
-                        class="btn-modo-seleccion-aviso h-11 sm:h-12 px-4 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors shrink-0 self-start sm:self-auto">
+                        class="btn-modo-seleccion-aviso h-11 sm:h-12 px-4 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 font-bold text-xs sm:text-sm flex items-center gap-2 transition-colors shrink-0 self-start lg:self-auto">
                         📣 <span>Enviar aviso a varios</span>
                     </button>
                 </header>
 
                 <!-- GRID DE COMERCIOS "SOLO BENEFICIOS" -->
-                <div id="grid-beneficios" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-5">
+                <div id="grid-beneficios" class="emp-grid">
                     <div class="col-span-full flex flex-col items-center justify-center gap-3 py-24 text-slate-400 font-semibold">
                         <svg class="w-6 h-6 animate-spin text-slate-300" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                         <span>Cargando emprendedores...</span>
@@ -287,8 +313,8 @@
 
             <!-- SECCIÓN: CATEGORIAS -->
             <section id="section-categorias" class="hidden animate-fade-in">
-                <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 mb-6 md:mb-10 pb-6 border-b border-slate-200/80">
-                    <div>
+                <header class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 lg:gap-6 mb-6 md:mb-10 pb-6 border-b border-slate-200/80">
+                    <div class="min-w-0">
                         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-200/60 text-slate-700 text-xs font-bold uppercase tracking-wider mb-3">
                             Estructura de Tienda
                         </div>
@@ -299,13 +325,13 @@
                             Administrá las categorías globales del marketplace.
                         </p>
                     </div>
-                    <button onclick="abrirModalCategoria()" class="inline-flex items-center justify-center gap-2 bg-obsidian text-white px-6 py-3.5 rounded-2xl font-bold text-sm hover:bg-yellow-400 hover:text-black transition-all duration-200 shadow-xl shadow-slate-900/10 hover:shadow-yellow-400/25 active:scale-95 group shrink-0">
+                    <button onclick="abrirModalCategoria()" class="inline-flex items-center justify-center gap-2 bg-obsidian text-white px-6 py-3.5 rounded-2xl font-bold text-sm hover:bg-yellow-400 hover:text-black transition-all duration-200 shadow-xl shadow-slate-900/10 hover:shadow-yellow-400/25 active:scale-95 group shrink-0 sm:self-start lg:self-auto">
                         <span class="text-lg leading-none group-hover:rotate-90 transition-transform duration-300">+</span>
                         <span>Nueva categoría</span>
                     </button>
                 </header>
 
-                <div id="tabla-categorias" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3">
+                <div id="tabla-categorias" class="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] gap-2 sm:gap-3">
                     <div class="col-span-full flex flex-col items-center justify-center gap-2 py-16 text-slate-400 font-semibold">
                         <svg class="w-6 h-6 animate-spin text-slate-300" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                         <span>Cargando categorías...</span>
@@ -359,7 +385,7 @@
                 <div class="flex flex-col gap-3 mb-5">
                     <div>
                         <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Tipo</p>
-                        <div id="filtro-tipo-postulaciones" class="grid grid-cols-2 sm:inline-flex gap-1.5 bg-slate-100 rounded-xl p-1 w-full sm:w-auto">
+                        <div id="filtro-tipo-postulaciones" class="grid grid-cols-2 lg:inline-flex gap-1.5 bg-slate-100 rounded-xl p-1 w-full lg:w-auto">
                             <button data-filtro="todos" onclick="setFiltroTipoPostulaciones('todos')" class="filtro-btn filtro-activo h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Todos</button>
                             <button data-filtro="emprendedor" onclick="setFiltroTipoPostulaciones('emprendedor')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Emprendedores</button>
                             <button data-filtro="comercio" onclick="setFiltroTipoPostulaciones('comercio')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Comercios</button>
@@ -368,7 +394,7 @@
                     </div>
                     <div>
                         <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Estado</p>
-                        <div id="filtro-estado-postulaciones" class="grid grid-cols-2 sm:inline-flex gap-1.5 bg-slate-100 rounded-xl p-1 w-full sm:w-auto">
+                        <div id="filtro-estado-postulaciones" class="grid grid-cols-2 lg:inline-flex gap-1.5 bg-slate-100 rounded-xl p-1 w-full lg:w-auto">
                             <button data-filtro="pendiente" onclick="setFiltroEstadoPostulaciones('pendiente')" class="filtro-btn filtro-activo h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Pendientes</button>
                             <button data-filtro="contactado" onclick="setFiltroEstadoPostulaciones('contactado')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Contactados</button>
                             <button data-filtro="aprobada" onclick="setFiltroEstadoPostulaciones('aprobada')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Aprobadas</button>
