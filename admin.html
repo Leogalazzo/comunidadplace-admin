@@ -254,20 +254,21 @@
 
                 <!-- BUSCADOR Y FILTRO -->
                 <div class="flex flex-col lg:flex-row gap-2.5 sm:gap-3 mb-5">
-                    <div class="relative flex-1 min-w-0">
+                    <div class="relative w-full lg:w-64 lg:shrink-0 min-w-0">
                         <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"/></svg>
                         <input id="buscador-emprendedores" type="text" inputmode="search" autocomplete="off"
-                            placeholder="Buscar por tienda, usuario o WhatsApp..."
+                            placeholder="Buscar tienda, usuario..."
                             class="w-full h-11 sm:h-12 pl-10 pr-9 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/60 focus:border-yellow-400 transition-all">
                         <button id="btn-limpiar-busqueda" onclick="limpiarBusquedaEmprendedores()"
                             class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
-                    <div id="filtro-estado-emprendedores" class="grid grid-cols-3 lg:flex gap-1.5 bg-slate-100 rounded-xl p-1 lg:shrink-0">
+                    <div id="filtro-estado-emprendedores" class="grid grid-cols-4 lg:flex gap-1.5 bg-slate-100 rounded-xl p-1 lg:shrink-0">
                         <button data-filtro="todos" onclick="setFiltroEmprendedores('todos')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Todos</button>
                         <button data-filtro="activo" onclick="setFiltroEmprendedores('activo')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Activos</button>
                         <button data-filtro="bloqueado" onclick="setFiltroEmprendedores('bloqueado')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Bloqueados</button>
+                        <button data-filtro="vencido" onclick="setFiltroEmprendedores('vencido')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Vencidos</button>
                     </div>
                 </div>
 
@@ -381,7 +382,7 @@
                     </div>
                 </header>
 
-                <!-- FILTROS -->
+                <!-- BUSCADOR Y FILTROS -->
                 <div class="flex flex-col gap-3 mb-5">
                     <div>
                         <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Tipo</p>
@@ -400,6 +401,16 @@
                             <button data-filtro="aprobada" onclick="setFiltroEstadoPostulaciones('aprobada')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Aprobadas</button>
                             <button data-filtro="rechazada" onclick="setFiltroEstadoPostulaciones('rechazada')" class="filtro-btn h-9 sm:h-auto px-2 sm:px-4 sm:py-2.5 rounded-lg text-[11px] sm:text-xs font-bold uppercase tracking-wide transition-all">Rechazadas</button>
                         </div>
+                    </div>
+                    <div class="relative w-full lg:w-64">
+                        <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"/></svg>
+                        <input id="buscador-postulaciones" type="text" inputmode="search" autocomplete="off"
+                            placeholder="Buscar postulante..."
+                            class="w-full h-11 sm:h-12 pl-10 pr-9 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/60 focus:border-yellow-400 transition-all">
+                        <button id="btn-limpiar-busqueda-postulaciones" onclick="limpiarBusquedaPostulaciones()"
+                            class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
                     </div>
                 </div>
 
