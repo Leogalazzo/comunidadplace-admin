@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await actualizarBadgePostulacionesPendientes();
     iniciarRealtimeAdmin();
     iniciarBuscadorEmprendedores();
+    iniciarBuscadorPostulaciones();
 });
 
 function iniciarBuscadorEmprendedores() {
@@ -123,7 +124,11 @@ function renderEmprendedores() {
     // vencida por falta de pago (que activo sigue en true) no aparecía como
     // bloqueada ni en el filtro ni en el contador.
     if (filtroEstadoActual === 'activo') data = data.filter(e => !calcularEstadoAcceso(e).bloqueado);
-    if (filtroEstadoActual === 'bloqueado') data = data.filter(e => calcularEstadoAcceso(e).bloqueado);
+    // "Bloqueado" y "Vencido" ahora son mutuamente excluyentes según el motivo
+    // (ver calcularEstadoAcceso): bloqueo manual del admin vs. mes gratis o
+    // suscripción vencida sin pagar.
+    if (filtroEstadoActual === 'bloqueado') data = data.filter(e => calcularEstadoAcceso(e).bloqueado && calcularEstadoAcceso(e).motivo === 'admin');
+    if (filtroEstadoActual === 'vencido') data = data.filter(e => calcularEstadoAcceso(e).bloqueado && calcularEstadoAcceso(e).motivo === 'pago');
 
     if (busquedaActual) {
         data = data.filter(e => {
@@ -163,8 +168,22 @@ function tarjetaEmprendedorHTML(e) {
     // falta de pago (mes gratis o suscripción sin renovar).
     const acceso = calcularEstadoAcceso(e);
     const bloqueadaPorPago = acceso.bloqueado && acceso.motivo === 'pago';
+
+    // Si está activo y tiene una fecha de vencimiento conocida (prueba
+    // gratis o mes pagado a mano), mostramos cuántos días faltan para que
+    // venza. Las suscripciones "authorized" (recurrentes por MercadoPago)
+    // no traen vencimiento acá porque se renuevan solas, así que en esas
+    // se muestra solo "Activo".
+    let textoActivo = 'Activo';
+    if (!acceso.bloqueado && acceso.vencimiento) {
+        const diasRestantes = Math.ceil((acceso.vencimiento.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        textoActivo = diasRestantes <= 0
+            ? 'Activo / Vence hoy'
+            : `Activo / ${diasRestantes} día${diasRestantes === 1 ? '' : 's'}`;
+    }
+
     const badge = !acceso.bloqueado
-        ? { texto: 'Activo', clase: 'bg-emerald-500/95 text-white' }
+        ? { texto: textoActivo, clase: 'bg-emerald-500/95 text-white' }
         : acceso.motivo === 'admin'
             ? { texto: 'Bloqueado', clase: 'bg-red-500/95 text-white' }
             : { texto: 'Vencida', clase: 'bg-orange-500/95 text-white' };
@@ -1120,6 +1139,7 @@ function escapeHtml(str) {
 let postulacionesCache = [];
 let filtroTipoPostulacionesActual = 'todos';
 let filtroEstadoPostulacionesActual = 'pendiente';
+let busquedaPostulacionesActual = '';
 
 const POSTULACION_TIPO_LABEL = {
     emprendedor: 'Emprendedor',
@@ -1192,6 +1212,25 @@ function setFiltroEstadoPostulaciones(filtro) {
     renderPostulaciones();
 }
 
+function iniciarBuscadorPostulaciones() {
+    const input = document.getElementById('buscador-postulaciones');
+    if (!input) return;
+    input.addEventListener('input', debounce(() => {
+        busquedaPostulacionesActual = input.value.trim().toLowerCase();
+        document.getElementById('btn-limpiar-busqueda-postulaciones').classList.toggle('hidden', busquedaPostulacionesActual === '');
+        renderPostulaciones();
+    }, 200));
+}
+
+function limpiarBusquedaPostulaciones() {
+    const input = document.getElementById('buscador-postulaciones');
+    input.value = '';
+    busquedaPostulacionesActual = '';
+    document.getElementById('btn-limpiar-busqueda-postulaciones').classList.add('hidden');
+    renderPostulaciones();
+    input.focus();
+}
+
 function renderPostulaciones() {
     const cont = document.getElementById('lista-postulaciones');
     const contador = document.getElementById('contador-postulaciones');
@@ -1206,6 +1245,16 @@ function renderPostulaciones() {
     }
     if (filtroEstadoPostulacionesActual !== 'todos') {
         lista = lista.filter(p => p.estado === filtroEstadoPostulacionesActual);
+    }
+    if (busquedaPostulacionesActual) {
+        lista = lista.filter(p => {
+            const nombre = (p.nombre || '').toLowerCase();
+            const negocio = (p.nombre_negocio || '').toLowerCase();
+            const whatsapp = (p.whatsapp || '').toLowerCase();
+            const email = (p.email || '').toLowerCase();
+            return nombre.includes(busquedaPostulacionesActual) || negocio.includes(busquedaPostulacionesActual)
+                || whatsapp.includes(busquedaPostulacionesActual) || email.includes(busquedaPostulacionesActual);
+        });
     }
 
     contador.textContent = `${lista.length} postulación${lista.length === 1 ? '' : 'es'}`;
