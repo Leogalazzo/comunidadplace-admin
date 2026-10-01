@@ -1068,9 +1068,54 @@ function toggleMedioPagoProducto(id) {
 }
 
 // ============================================================
+// DATOS OBLIGATORIOS ANTES DE SUBIR PRODUCTOS
+// ============================================================
+// Sin WhatsApp cargado, el comprador no tiene como contactar al
+// emprendedor y los pedidos no llegan. Por eso, antes de abrir el
+// formulario de "Nuevo producto" verificamos que el contacto exista.
+// En la base el WhatsApp se guarda como "549" + caracteristica + numero.
+function perfilTieneContacto() {
+    const digitos = ((emprendedorActual && emprendedorActual.whatsapp) || '')
+        .replace(/\D/g, '')
+        .replace(/^549/, '');
+    return digitos.length >= 8;
+}
+
+function mostrarModalDatosRequeridos() {
+    const m = document.getElementById('modal-datos-requeridos');
+    if (!m) return;
+    m.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+}
+
+function cerrarModalDatosRequeridos() {
+    const m = document.getElementById('modal-datos-requeridos');
+    if (!m) return;
+    m.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+}
+
+function irACompletarDatos() {
+    cerrarModalDatosRequeridos();
+    mostrarSeccion('perfil');
+    // Llevamos al emprendedor directo al campo que falta.
+    setTimeout(() => {
+        const input = document.getElementById('p-whatsapp');
+        if (!input) return;
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        input.focus({ preventScroll: true });
+    }, 120);
+}
+
+// ============================================================
 // MODAL: ABRIR / CERRAR
 // ============================================================
 function abrirFormulario() {
+    // Sin contacto cargado no se puede crear un producto nuevo.
+    if (!perfilTieneContacto()) {
+        mostrarModalDatosRequeridos();
+        return;
+    }
     productoEditandoId = null;
     imagenThumbUrlActual = '';
     variantesEnEdicion = [];
