@@ -2258,6 +2258,43 @@
         </div>
     </div>
 
+    <!-- MODAL: DATOS DE CONTACTO OBLIGATORIOS ANTES DE SUBIR PRODUCTOS
+         Se abre desde abrirFormulario() cuando el emprendedor todavia no
+         cargo su WhatsApp en "Mis datos". Sin contacto, los pedidos no
+         le llegarian, asi que no lo dejamos crear productos hasta completarlo. -->
+    <div id="modal-datos-requeridos" onclick="if (event.target === this) cerrarModalDatosRequeridos()" class="modal-overlay fixed inset-0 z-[80] hidden flex items-center justify-center p-4 sm:p-6">
+        <div class="absolute inset-0 bg-slate-950/80"></div>
+
+        <div class="modal-panel bg-white w-full max-w-sm rounded-[28px] relative z-10 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.45)] overflow-hidden">
+            <div class="h-1.5 w-full bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-400"></div>
+
+            <button type="button" onclick="cerrarModalDatosRequeridos()" aria-label="Cerrar" class="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center bg-slate-100/80 text-slate-400 hover:text-slate-700 hover:bg-slate-200 active:scale-90 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+
+            <div class="p-7 sm:p-8 pt-9 text-center">
+                <div class="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-5 bg-gradient-to-br from-yellow-50 to-amber-100 text-amber-500 shadow-inner">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                    </svg>
+                </div>
+
+                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500 mb-2">Antes de continuar</p>
+                <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight mb-2.5">Completá tus datos</h2>
+                <p class="text-sm text-slate-500 leading-relaxed mb-7">
+                    Para subir productos es obligatorio cargar tu <strong class="text-slate-700">WhatsApp de contacto</strong> en "Mis datos".
+                    Sin ese dato, los compradores no pueden comunicarse con vos y no te llegarían los pedidos.
+                </p>
+
+                <button type="button" onclick="irACompletarDatos()" class="w-full bg-obsidian text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-yellow-400 hover:text-black transition-all duration-200 shadow-lg shadow-slate-900/15 active:scale-95">
+                    Ir a Mis datos
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL: PAGO DE SUSCRIPCIÓN (Card Payment Brick de MercadoPago)
          Reemplaza la redirección a mercadopago.com: el formulario de
          tarjeta se monta acá mismo, dentro del panel. No se abre ni la
